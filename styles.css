@@ -94,6 +94,30 @@ body {
     pointer-events: none; /* чтобы клики проходили сквозь */
 }
 
+/* Бочка (спец-объект) визуально ведёт себя как персонаж */
+.barrel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 90px;
+    pointer-events: none;
+}
+
+/* Ящик-буст (crate) */
+.crate {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 90px;
+    pointer-events: none;
+}
+
 .character .hp {
     position: absolute;
     left: 50%;
@@ -171,7 +195,7 @@ body {
     pointer-events: none;
     transform: translate(-50%, 0);
     animation: pxpUp 1s ease-out forwards;
-    z-index: 900;
+    z-index: 2000;
 }
 
 @keyframes pxpUp {

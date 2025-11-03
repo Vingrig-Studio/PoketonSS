@@ -302,8 +302,28 @@ class Bullet {
         this.top -= this.speed / 60;
         this.element.style.top = `${Math.round(this.top)}px`;
 
-        // Проверка столкновений с персонажами на той же дорожке
+        // Сначала проверка столкновений с бочкой/ящиком на той же дорожке
         const bulletRect = this.element.getBoundingClientRect();
+        const hitBarrel = this.game.barrels && this.game.barrels.find(b => b.trackIndex === this.trackIndex && (function(){
+            const br = b.element.getBoundingClientRect();
+            return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
+        })());
+        if (hitBarrel) {
+            this.game.onBarrelHit(hitBarrel);
+            this.destroy();
+            return;
+        }
+        const hitCrate = this.game.crates && this.game.crates.find(b => b.trackIndex === this.trackIndex && (function(){
+            const br = b.element.getBoundingClientRect();
+            return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
+        })());
+        if (hitCrate) {
+            this.game.onCrateHit(hitCrate);
+            this.destroy();
+            return;
+        }
+
+        // Проверка столкновений с персонажами на той же дорожке
         const hitChar = this.game.characters.find(c => c.isActive && c.trackIndex === this.trackIndex &&
             (function(){
                 const cr = c.element.getBoundingClientRect();
@@ -330,6 +350,131 @@ class Bullet {
 
     destroy() {
         if (this.rafId) cancelAnimationFrame(this.rafId);
+        this.element.remove();
+    }
+}
+
+// Спец-объект: бочка (fair.tgs)
+class Barrel {
+    constructor(game, trackIndex, speed) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'barrel';
+        this.top = -100;
+        this.element.style.top = `${this.top}px`;
+        this.loadAnimation();
+
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => {
+            if (!r.ok) throw new Error('not ok');
+            return r.arrayBuffer();
+        }).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+
+        // пробуем fair.tgs затем вариант с пробелом
+        tryFetch('fair.tgs').catch(() => tryFetch('fair .tgs')).then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    move() {
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            // бочка исчезает, не влияя на жизни
+            this.game.removeBarrel(this);
+            this.destroy();
+            return;
+        }
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        if (this.animation) this.animation.destroy();
+        this.element.remove();
+    }
+}
+
+// Ящик-буст: при попадании даёт +5 PXP и активирует массовую стрельбу
+class Crate {
+    constructor(game, trackIndex, speed) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'crate';
+        this.top = -100;
+        this.element.style.top = `${this.top}px`;
+        this.loadAnimation();
+
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => {
+            if (!r.ok) throw new Error('not ok');
+            return r.arrayBuffer();
+        }).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+
+        tryFetch('game.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    move() {
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            // исчезает без последствий
+            this.game.removeCrate(this);
+            this.destroy();
+            return;
+        }
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        if (this.animation) this.animation.destroy();
         this.element.remove();
     }
 }
@@ -366,6 +511,13 @@ class Game {
         // Объекты пуль
         this.bullets = [];
         this.nextBulletMs = Number.POSITIVE_INFINITY;
+        // Спец-объекты: бочки
+        this.barrels = [];
+        // Спец-объекты: ящики
+        this.crates = [];
+        this.lastCrateCheckSecond = -1;
+        this.powerUpActiveUntilMs = 0;
+        this.nextBulletPerTrack = new Array(7).fill(Number.POSITIVE_INFINITY);
         
         // Скорости объектов
         this.enemySpeedPxSec = 100; // px/сек
@@ -398,6 +550,14 @@ class Game {
         this.bullets.forEach(b => b.destroy());
         this.bullets = [];
         this.nextBulletMs = this.timer.getElapsedTime(); // сразу с началом — первая пуля
+        // очистка бочек
+        this.barrels.forEach(b => b.destroy());
+        this.barrels = [];
+        // очистка ящиков
+        this.crates.forEach(b => b.destroy());
+        this.crates = [];
+        this.powerUpActiveUntilMs = 0;
+        this.nextBulletPerTrack.fill(Number.POSITIVE_INFINITY);
         this.loop();
 
         // создать/сбросить игрока по центру дорожек (индекс 3 из 0..6)
@@ -506,24 +666,65 @@ class Game {
             this.nextWaveStartMs += 5000; // следующая волна через 5s
         }
 
+        // Спавн ящика каждые 20 секунд с вероятностью 1/3
+        const secondsNow = Math.floor(elapsed / 1000);
+        if (secondsNow > 0 && secondsNow % 20 === 0 && this.lastCrateCheckSecond !== secondsNow) {
+            this.lastCrateCheckSecond = secondsNow;
+            if (Math.random() < 1/3) {
+                const trackIndex = Math.floor(Math.random() * 7);
+                const crate = new Crate(this, trackIndex, this.enemySpeedPxSec);
+                this.crates.push(crate);
+            }
+        }
+
         // Спавн в рамках текущей волны
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
             const speed = this.enemySpeedPxSec; // px/sec
-            // Рандомный штраф к здоровью от 0% до 30% от базового
-            const healthPenaltyRatio = Math.random() * 0.3; // [0, 0.3]
-            const spawnHealth = Number((this.baseHealth * (1 - healthPenaltyRatio)).toFixed(1));
-            const char = new Character(this, trackIndex, speed, spawnHealth);
-            this.characters.push(char);
+            // В окне 5..30с с шансом 1/30 появляется бочка; шанс усиливается при низких жизнях
+            const seconds = Math.floor(this.timer.getElapsedTime() / 1000);
+            const baseProb = 1 / 30;
+            const multiplier = this.lives <= 1 ? 3 : (this.lives === 2 ? 2 : 1);
+            const prob = baseProb * multiplier; // 1/30, 1/15, 1/10
+            const canSpawnBarrel = seconds >= 5 && seconds <= 30 && Math.random() < prob;
+            if (canSpawnBarrel) {
+                const barrel = new Barrel(this, trackIndex, speed);
+                this.barrels.push(barrel);
+            } else {
+                // Рандомный штраф к здоровью от 0% до 30% от базового
+                const healthPenaltyRatio = Math.random() * 0.3; // [0, 0.3]
+                const spawnHealth = Number((this.baseHealth * (1 - healthPenaltyRatio)).toFixed(1));
+                const char = new Character(this, trackIndex, speed, spawnHealth);
+                this.characters.push(char);
+            }
             this.spawnsLeftInWave -= 1;
             this.nextSpawnMs += this.spawnIntervalMs;
         }
 
-        // Генерация пули с текущим интервалом, из дорожки игрока
-        if (this.isRunning && elapsed >= this.nextBulletMs && this.player) {
-            const bullet = new Bullet(this, this.player.trackIndex, this.bulletSpeedPxSec, this.bulletDamage);
-            this.bullets.push(bullet);
-            this.nextBulletMs += this.bulletIntervalMs;
+        // Генерация пуль
+        if (this.isRunning) {
+            // Режим массового буста
+            if (this.powerUpActiveUntilMs > elapsed) {
+                for (let i = 0; i < 7; i++) {
+                    if (elapsed >= this.nextBulletPerTrack[i]) {
+                        const b = new Bullet(this, i, 600, 5);
+                        this.bullets.push(b);
+                        this.nextBulletPerTrack[i] = elapsed + this.bulletIntervalMs;
+                    }
+                }
+            } else {
+                // выключаем буст, если закончился
+                if (this.powerUpActiveUntilMs !== 0) {
+                    this.powerUpActiveUntilMs = 0;
+                    this.nextBulletPerTrack.fill(Number.POSITIVE_INFINITY);
+                }
+                // Обычный выстрел из дорожки игрока
+                if (elapsed >= this.nextBulletMs && this.player) {
+                    const bullet = new Bullet(this, this.player.trackIndex, this.bulletSpeedPxSec, this.bulletDamage);
+                    this.bullets.push(bullet);
+                    this.nextBulletMs += this.bulletIntervalMs;
+                }
+            }
         }
 
         requestAnimationFrame(this.loop);
@@ -536,12 +737,24 @@ class Game {
         }
     }
 
+    removeBarrel(barrel) {
+        const idx = this.barrels.indexOf(barrel);
+        if (idx !== -1) this.barrels.splice(idx, 1);
+    }
+
+    removeCrate(crate) {
+        const idx = this.crates.indexOf(crate);
+        if (idx !== -1) this.crates.splice(idx, 1);
+    }
+
     gameOver() {
         if (!this.isRunning) return;
         this.isRunning = false;
         this.timer.stop();
         this.characters.forEach(char => char.destroy());
         this.characters = [];
+        this.barrels.forEach(b => b.destroy());
+        this.barrels = [];
         this.bullets.forEach(b => b.destroy());
         this.bullets = [];
         if (this.overlay) this.overlay.style.display = 'flex';
@@ -586,6 +799,9 @@ class Game {
         // Сброс частоты выпуска и счётчика апгрейдов скорости
         this.bulletIntervalMs = 1000;
         this.speedUpgradeCount = 0;
+        // Очистка бочек
+        this.barrels.forEach(b => b.destroy());
+        this.barrels = [];
         
         // Перезапуск игры
         this.start();
@@ -610,8 +826,10 @@ class Game {
         if (!field || !element) return;
         const fieldRect = field.getBoundingClientRect();
         const elRect = element.getBoundingClientRect();
-        const x = elRect.left + elRect.width / 2 - fieldRect.left;
-        const y = elRect.top - fieldRect.top;
+        let x = elRect.left + elRect.width / 2 - fieldRect.left;
+        let y = elRect.top - fieldRect.top;
+        x = Math.max(0, Math.min(x, fieldRect.width));
+        y = Math.max(0, Math.min(y, fieldRect.height - 20));
         const tag = document.createElement('div');
         tag.className = 'pxp-float';
         tag.style.left = `${x}px`;
@@ -650,6 +868,35 @@ class Game {
             const valueEl = this.player.hpEl.querySelector('.value');
             if (valueEl) valueEl.textContent = String(this.lives);
         }
+    }
+
+    onBarrelHit(barrel) {
+        // награда за бочку
+        this.awardPxp(10, barrel.element);
+        // уничтожаем бочку
+        this.removeBarrel(barrel);
+        barrel.destroy();
+        // Все текущие персонажи исчезают с выпадением лута
+        const loot = this.getCurrentLoot();
+        const toRemove = [...this.characters];
+        for (const c of toRemove) {
+            this.awardPxp(loot, c.element);
+            this.removeCharacter(c);
+            c.destroy();
+        }
+    }
+
+    onCrateHit(crate) {
+        // +5 PXP за ящик
+        this.awardPxp(5, crate.element);
+        // Активируем массовую стрельбу на 5 секунд
+        const now = this.timer.getElapsedTime();
+        this.powerUpActiveUntilMs = Math.max(this.powerUpActiveUntilMs, now + 5000);
+        // начать стрелять всеми дорожками немедленно
+        this.nextBulletPerTrack = this.nextBulletPerTrack.map(() => now);
+        // удалить ящик
+        this.removeCrate(crate);
+        crate.destroy();
     }
 }
 
