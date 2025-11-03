@@ -118,6 +118,41 @@ body {
     pointer-events: none;
 }
 
+/* Пчела */
+.bee {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 90px;
+    pointer-events: none;
+}
+
+/* Босс */
+.boss {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 110px; /* немного крупнее */
+    pointer-events: none;
+}
+
+.pxp-mult {
+    position: absolute;
+    color: #00e5ff;
+    font-weight: bold;
+    text-shadow: 0 0 6px rgba(0,229,255,0.7);
+    pointer-events: none;
+    transform: translate(-50%, 0);
+    animation: pxpUp 1.1s ease-out forwards;
+    z-index: 2000;
+}
+
 .character .hp {
     position: absolute;
     left: 50%;
@@ -181,6 +216,18 @@ body {
     color: #ffff00;
     margin-bottom: 16px;
     font-family: 'Courier New', monospace;
+}
+
+.popup-dev {
+    display: inline-block;
+    margin-top: 12px;
+    color: #66bbff;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.popup-dev:hover {
+    text-decoration: underline;
 }
 
 /* Всплывающее начисление PXP */

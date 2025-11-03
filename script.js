@@ -322,8 +322,17 @@ class Bullet {
             this.destroy();
             return;
         }
+        const hitBee = this.game.bees && this.game.bees.find(b => b.trackIndex === this.trackIndex && (function(){
+            const br = b.element.getBoundingClientRect();
+            return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
+        })());
+        if (hitBee) {
+            this.game.onBeeHit(hitBee);
+            this.destroy();
+            return;
+        }
 
-        // Проверка столкновений с персонажами на той же дорожке
+        // Проверка столкновений с персонажами/боссом на той же дорожке
         const hitChar = this.game.characters.find(c => c.isActive && c.trackIndex === this.trackIndex &&
             (function(){
                 const cr = c.element.getBoundingClientRect();
@@ -333,6 +342,16 @@ class Bullet {
         );
         if (hitChar) {
             hitChar.applyDamage(this.damage);
+            this.destroy();
+            return;
+        }
+
+        const hitBoss = this.game.bosses && this.game.bosses.find(b => b.trackIndex === this.trackIndex && (function(){
+            const br = b.element.getBoundingClientRect();
+            return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
+        })());
+        if (hitBoss) {
+            hitBoss.applyDamage(this.damage);
             this.destroy();
             return;
         }
@@ -479,6 +498,154 @@ class Crate {
     }
 }
 
+// Пчела (ускоряет стрельбу игрока)
+class Bee {
+    constructor(game, trackIndex, speed) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'bee';
+        this.top = -100;
+        this.element.style.top = `${this.top}px`;
+        this.loadAnimation();
+
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => {
+            if (!r.ok) throw new Error('not ok');
+            return r.arrayBuffer();
+        }).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+
+        tryFetch('bee.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    move() {
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            this.game.removeBee(this);
+            this.destroy();
+            return;
+        }
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        if (this.animation) this.animation.destroy();
+        this.element.remove();
+    }
+}
+
+// Босс
+class Boss {
+    constructor(game, trackIndex, speed, health) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'boss';
+        this.top = -120;
+        this.element.style.top = `${this.top}px`;
+        this.health = health;
+        this.isActive = true;
+        this.loadAnimation();
+
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        this.renderHp();
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        tryFetch('boss1.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    renderHp() {
+        if (this.hpEl) this.hpEl.remove();
+        const hp = document.createElement('div');
+        hp.className = 'hp';
+        const heart = document.createElement('span');
+        heart.className = 'heart';
+        heart.textContent = '❤';
+        const text = document.createElement('span');
+        text.className = 'value';
+        text.textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
+        hp.appendChild(heart);
+        hp.appendChild(text);
+        this.element.appendChild(hp);
+        this.hpEl = hp;
+    }
+
+    applyDamage(amount) {
+        if (!this.isActive) return;
+        this.health = Number((this.health - amount).toFixed(1));
+        if (this.hpEl) this.hpEl.querySelector('.value').textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
+        if (this.health <= 0) {
+            this.isActive = false;
+            this.game.onBossKilled(this);
+            this.destroy();
+        }
+    }
+
+    move() {
+        if (!this.isActive) return;
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            // при достижении пунктира как обычный враг
+            this.isActive = false;
+            this.game.onEnemyReachedLine(this);
+            return;
+        }
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        if (this.animation) this.animation.destroy();
+        this.element.remove();
+    }
+}
+
 // Класс игры
 class Game {
     constructor(timer, balance) {
@@ -518,6 +685,13 @@ class Game {
         this.lastCrateCheckSecond = -1;
         this.powerUpActiveUntilMs = 0;
         this.nextBulletPerTrack = new Array(7).fill(Number.POSITIVE_INFINITY);
+        // Пчёлы
+        this.bees = [];
+        this.lastBeeCheckSecond = -1;
+        this.rapidFireUntilMs = 0; // для игрока: частота 0.05с
+        // Боссы
+        this.bosses = [];
+        this.lastBossMinute = -1;
         
         // Скорости объектов
         this.enemySpeedPxSec = 100; // px/сек
@@ -558,6 +732,10 @@ class Game {
         this.crates = [];
         this.powerUpActiveUntilMs = 0;
         this.nextBulletPerTrack.fill(Number.POSITIVE_INFINITY);
+        // очистка пчёл
+        this.bees.forEach(b => b.destroy());
+        this.bees = [];
+        this.rapidFireUntilMs = 0;
         this.loop();
 
         // создать/сбросить игрока по центру дорожек (индекс 3 из 0..6)
@@ -658,7 +836,8 @@ class Game {
         // Старт новой волны по таймеру
         if (elapsed >= this.nextWaveStartMs) {
             this.waveNumber += 1;
-            const spawnsInWave = this.baseCharactersPerWave + (this.waveNumber - 1);
+            const baseCount = this.baseCharactersPerWave + (this.waveNumber - 1);
+            const spawnsInWave = Math.ceil(baseCount * this.getGenerationMultiplier());
             const spawnIntervalMs = (this.baseSpawnInterval + (this.waveNumber - 1) * 0.1) * 1000;
             this.spawnsLeftInWave = spawnsInWave;
             this.nextSpawnMs = elapsed; // первый спавн мгновенно
@@ -675,6 +854,27 @@ class Game {
                 const crate = new Crate(this, trackIndex, this.enemySpeedPxSec);
                 this.crates.push(crate);
             }
+        }
+
+        // Спавн пчелы каждые 10 секунд с вероятностью 1/4
+        if (secondsNow > 0 && secondsNow % 10 === 0 && this.lastBeeCheckSecond !== secondsNow) {
+            this.lastBeeCheckSecond = secondsNow;
+            if (Math.random() < 1/4) {
+                const trackIndex = Math.floor(Math.random() * 7);
+                const bee = new Bee(this, trackIndex, this.enemySpeedPxSec);
+                this.bees.push(bee);
+            }
+        }
+
+        // Спавн босса каждую полную минуту
+        const minuteNow = Math.floor(elapsed / 60000);
+        if (minuteNow > 0 && this.lastBossMinute !== minuteNow && secondsNow % 60 === 0) {
+            this.lastBossMinute = minuteNow;
+            const trackIndex = Math.floor(Math.random() * 7);
+            // здоровье босса: базовое 10, +30% за каждую прошедшую минуту (мультипликативно)
+            const bossHp = Number((10 * Math.pow(1.3, minuteNow)).toFixed(1));
+            const boss = new Boss(this, trackIndex, this.enemySpeedPxSec, bossHp);
+            this.bosses.push(boss);
         }
 
         // Спавн в рамках текущей волны
@@ -707,10 +907,16 @@ class Game {
             if (this.powerUpActiveUntilMs > elapsed) {
                 for (let i = 0; i < 7; i++) {
                     if (elapsed >= this.nextBulletPerTrack[i]) {
-                        const b = new Bullet(this, i, 600, 5);
+                        const b = new Bullet(this, i, 600, this.bulletDamage);
                         this.bullets.push(b);
                         this.nextBulletPerTrack[i] = elapsed + this.bulletIntervalMs;
                     }
+                }
+                // Во время массовой стрельбы игрок тоже стреляет своей пулей
+                if (this.player && elapsed >= this.nextBulletMs) {
+                    const pb = new Bullet(this, this.player.trackIndex, 600, this.bulletDamage);
+                    this.bullets.push(pb);
+                    this.nextBulletMs = elapsed + this.bulletIntervalMs;
                 }
             } else {
                 // выключаем буст, если закончился
@@ -720,9 +926,10 @@ class Game {
                 }
                 // Обычный выстрел из дорожки игрока
                 if (elapsed >= this.nextBulletMs && this.player) {
+                    const effectiveInterval = (this.rapidFireUntilMs > elapsed) ? 50 : this.bulletIntervalMs; // 0.05с
                     const bullet = new Bullet(this, this.player.trackIndex, this.bulletSpeedPxSec, this.bulletDamage);
                     this.bullets.push(bullet);
-                    this.nextBulletMs += this.bulletIntervalMs;
+                    this.nextBulletMs += effectiveInterval;
                 }
             }
         }
@@ -747,6 +954,16 @@ class Game {
         if (idx !== -1) this.crates.splice(idx, 1);
     }
 
+    removeBee(bee) {
+        const idx = this.bees.indexOf(bee);
+        if (idx !== -1) this.bees.splice(idx, 1);
+    }
+
+    removeBoss(boss) {
+        const idx = this.bosses.indexOf(boss);
+        if (idx !== -1) this.bosses.splice(idx, 1);
+    }
+
     gameOver() {
         if (!this.isRunning) return;
         this.isRunning = false;
@@ -755,9 +972,17 @@ class Game {
         this.characters = [];
         this.barrels.forEach(b => b.destroy());
         this.barrels = [];
+        this.crates.forEach(c => c.destroy());
+        this.crates = [];
+        this.bees.forEach(b => b.destroy());
+        this.bees = [];
+        this.bosses.forEach(b => b.destroy());
+        this.bosses = [];
         this.bullets.forEach(b => b.destroy());
         this.bullets = [];
         if (this.overlay) this.overlay.style.display = 'flex';
+        // гарантируем наличие гиперссылки в поп-апе
+        this.ensureDevLink();
         if (this.finalTimeEl) this.finalTimeEl.textContent = `Время: ${this.timer.formatMs(this.timer.getElapsedTime())}`;
     }
 
@@ -840,6 +1065,39 @@ class Game {
         setTimeout(() => tag.remove(), 1000);
     }
 
+    showMultiplierAtElement(element, text) {
+        const field = document.querySelector('.game-field');
+        if (!field || !element) return;
+        const fieldRect = field.getBoundingClientRect();
+        const elRect = element.getBoundingClientRect();
+        let x = elRect.left + elRect.width / 2 - fieldRect.left;
+        let y = elRect.top - fieldRect.top;
+        x = Math.max(0, Math.min(x, fieldRect.width));
+        y = Math.max(0, Math.min(y, fieldRect.height - 20));
+        const tag = document.createElement('div');
+        tag.className = 'pxp-mult';
+        tag.style.left = `${x}px`;
+        tag.style.top = `${y}px`;
+        tag.textContent = text;
+        field.appendChild(tag);
+        setTimeout(() => tag.remove(), 1100);
+    }
+
+    ensureDevLink() {
+        const popup = document.querySelector('.popup');
+        if (!popup) return;
+        let link = popup.querySelector('.popup-dev');
+        if (!link) {
+            link = document.createElement('a');
+            link.className = 'popup-dev';
+            link.href = 'https://t.me/vingrigstudio';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = 'Dev Vingrig Studio';
+            popup.appendChild(link);
+        }
+    }
+
     awardPxp(amount, atElement) {
         if (this.balance) this.balance.add(amount);
         this.showPxpGainAtElement(atElement, amount);
@@ -850,6 +1108,13 @@ class Game {
         const seconds = Math.floor(elapsedMs / 1000); // прошедшие полные секунды
         const loot = 0.5 + seconds * 0.05; // старт 0.5 и +0.05 за каждую секунду
         return Number(loot.toFixed(2));
+    }
+
+    // Увеличение генерации врагов: +20% каждую полную минуту
+    getGenerationMultiplier() {
+        const minutes = Math.floor(this.timer.getElapsedTime() / 60000);
+        if (minutes <= 0) return 1;
+        return Math.pow(1.2, minutes);
     }
 
     onEnemyReachedLine(character) {
@@ -897,6 +1162,26 @@ class Game {
         // удалить ящик
         this.removeCrate(crate);
         crate.destroy();
+    }
+
+    onBossKilled(boss) {
+        // Удаляем босса
+        this.removeBoss(boss);
+        // Удваиваем баланс
+        const before = this.balance.amount;
+        this.balance.amount = Number((this.balance.amount * 2).toFixed(2));
+        this.balance.updateDisplay();
+        // Показать множитель x2
+        this.showMultiplierAtElement(boss.element, '×2');
+    }
+
+    onBeeHit(bee) {
+        // активация быстрого огня для игрока на 8 секунд (0.05с интервал)
+        const now = this.timer.getElapsedTime();
+        this.rapidFireUntilMs = Math.max(this.rapidFireUntilMs, now + 8000);
+        this.nextBulletMs = now; // начать сразу
+        this.removeBee(bee);
+        bee.destroy();
     }
 }
 
