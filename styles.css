@@ -43,6 +43,12 @@ body {
     color: #ffff00;
 }
 
+.lives {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ff6666;
+}
+
 /* Игровое поле */
 .game-field {
     flex: 1;

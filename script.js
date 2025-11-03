@@ -173,7 +173,7 @@ class Character {
         
         if (charBottom >= linePosition) {
             this.isActive = false;
-            this.game.gameOver();
+            this.game.onEnemyReachedLine(this);
             return;
         }
 
@@ -345,6 +345,7 @@ class Game {
         this.restartBtn = document.getElementById('restart-btn');
         this.restartBtn.addEventListener('click', this.restart.bind(this));
         this.finalTimeEl = document.getElementById('final-time');
+        this.lives = 3;
         
         this.waveNumber = 0;
         this.baseSpawnInterval = 3; // секунды
@@ -374,6 +375,7 @@ class Game {
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
         this.scheduleStart(1);
+        this.updateLivesDisplay();
     }
 
     scheduleStart(startAtSecond) {
@@ -472,6 +474,7 @@ class Game {
         this.balance.checkUpgradeButtons();
         this.updateSpeedInfo();
         this.updateDamageInfo();
+        this.updateLivesDisplay();
     }
 
     loop() {
@@ -544,6 +547,8 @@ class Game {
         this.timer.start(); // перезапуск секундомера
         this.baseHealth = 1.0;
         this.lastHealthSecond = 0;
+        this.lives = 3;
+        this.updateLivesDisplay();
         // Сброс цен на апгрейды
         const speedBtn = document.getElementById('speed-btn');
         if (speedBtn) {
@@ -614,6 +619,24 @@ class Game {
         const seconds = Math.floor(elapsedMs / 1000); // прошедшие полные секунды
         const loot = 0.5 + seconds * 0.05; // старт 0.5 и +0.05 за каждую секунду
         return Number(loot.toFixed(2));
+    }
+
+    onEnemyReachedLine(character) {
+        if (!this.isRunning) return;
+        this.removeCharacter(character);
+        character.destroy();
+        this.lives = Math.max(0, this.lives - 1);
+        this.updateLivesDisplay();
+        if (this.lives <= 0) {
+            this.gameOver();
+        }
+    }
+
+    updateLivesDisplay() {
+        if (this.player && this.player.hpEl) {
+            const valueEl = this.player.hpEl.querySelector('.value');
+            if (valueEl) valueEl.textContent = String(this.lives);
+        }
     }
 }
 
