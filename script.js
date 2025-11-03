@@ -141,6 +141,17 @@ class Character {
         this.hpEl = hp;
     }
 
+    applyDamage(amount) {
+        if (!this.isActive) return;
+        this.health = Number((this.health - amount).toFixed(1));
+        if (this.hpEl) this.hpEl.querySelector('.value').textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
+        if (this.health <= 0) {
+            this.isActive = false;
+            this.game.removeCharacter(this);
+            this.destroy();
+        }
+    }
+
     move() {
         if (!this.isActive) return;
         this.top += this.speed / 60; // Примерно 60 px за кадр/секунду
@@ -250,6 +261,69 @@ class Player {
     }
 }
 
+// Пуля
+class Bullet {
+    constructor(game, trackIndex, speed) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed; // px/sec (движение вверх)
+        this.element = document.createElement('div');
+        this.element.className = 'bullet';
+        this.top = 0; // зададим ниже
+
+        // Поместим пулю в нужную дорожку
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        // Начальная вертикальная позиция: по пунктиру
+        const line = document.querySelector('.horizontal-line');
+        const track = tracks[this.trackIndex];
+        const lineTop = line.getBoundingClientRect().top;
+        const trackTop = track.getBoundingClientRect().top;
+        const bulletH = this.element.getBoundingClientRect().height || 34;
+        this.top = Math.max(0, lineTop - trackTop - bulletH / 2);
+        this.element.style.top = `${this.top}px`;
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    move() {
+        // Движение вверх (уменьшаем top)
+        this.top -= this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+
+        // Проверка столкновений с персонажами на той же дорожке
+        const bulletRect = this.element.getBoundingClientRect();
+        const hitChar = this.game.characters.find(c => c.isActive && c.trackIndex === this.trackIndex &&
+            (function(){
+                const cr = c.element.getBoundingClientRect();
+                // горизонтально они по центру дорожки; достаточно вертикальной проверки
+                return bulletRect.bottom >= cr.top && bulletRect.top <= cr.bottom;
+            })()
+        );
+        if (hitChar) {
+            hitChar.applyDamage(1);
+            this.destroy();
+            return;
+        }
+
+        // Удаление при достижении верха экрана
+        const bulletTop = this.element.getBoundingClientRect().top;
+        const fieldTop = document.querySelector('.game-field').getBoundingClientRect().top;
+        if (bulletTop <= fieldTop) {
+            this.destroy();
+            return;
+        }
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        this.element.remove();
+    }
+}
+
 // Класс игры
 class Game {
     constructor(timer, balance) {
@@ -278,6 +352,13 @@ class Game {
         // Игрок
         this.player = null;
 
+        // Объекты пуль
+        this.bullets = [];
+        this.nextBulletMs = Number.POSITIVE_INFINITY;
+        
+        // Общая скорость объектов (враги и пули)
+        this.entitySpeedPxSec = 100; // px/сек
+
         this.loop = this.loop.bind(this);
         this.scheduleStart(1);
     }
@@ -297,6 +378,9 @@ class Game {
         this.nextWaveStartMs = 1000; // первая волна в 1s
         this.nextSpawnMs = Number.POSITIVE_INFINITY;
         this.spawnsLeftInWave = 0;
+        this.bullets.forEach(b => b.destroy());
+        this.bullets = [];
+        this.nextBulletMs = this.timer.getElapsedTime(); // сразу с началом — первая пуля
         this.loop();
 
         // создать/сбросить игрока по центру дорожек (индекс 3 из 0..6)
@@ -353,14 +437,26 @@ class Game {
         // Спавн в рамках текущей волны
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
-            const speed = 100; // px/sec
+            const speed = this.entitySpeedPxSec; // px/sec
             const char = new Character(this, trackIndex, speed, this.baseHealth);
             this.characters.push(char);
             this.spawnsLeftInWave -= 1;
             this.nextSpawnMs += this.spawnIntervalMs;
         }
 
+        // Генерация пули каждую секунду, из текущей дорожки игрока
+        if (this.isRunning && elapsed >= this.nextBulletMs && this.player) {
+            const bullet = new Bullet(this, this.player.trackIndex, this.entitySpeedPxSec);
+            this.bullets.push(bullet);
+            this.nextBulletMs += 1000;
+        }
+
         requestAnimationFrame(this.loop);
+    }
+
+    removeCharacter(char) {
+        const idx = this.characters.indexOf(char);
+        if (idx !== -1) this.characters.splice(idx, 1);
     }
 
     gameOver() {
@@ -369,6 +465,8 @@ class Game {
         this.timer.stop();
         this.characters.forEach(char => char.destroy());
         this.characters = [];
+        this.bullets.forEach(b => b.destroy());
+        this.bullets = [];
         if (this.overlay) this.overlay.style.display = 'flex';
         if (this.finalTimeEl) this.finalTimeEl.textContent = `Время: ${this.timer.formatMs(this.timer.getElapsedTime())}`;
     }
