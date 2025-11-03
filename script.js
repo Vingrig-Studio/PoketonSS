@@ -371,6 +371,8 @@ class Game {
         this.enemySpeedPxSec = 100; // px/сек
         this.bulletSpeedPxSec = 400; // px/сек (начальная скорость пули)
         this.bulletDamage = 1.5; // урон пули (в сердцах)
+        this.bulletIntervalMs = 1000; // интервал выпуска пуль, мс
+        this.speedUpgradeCount = 0; // число апгрейдов скорости
 
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
@@ -440,6 +442,11 @@ class Game {
 
                     // Увеличиваем скорость пули на +10 px/сек
                     this.bulletSpeedPxSec += 10;
+                    // Каждые 5 апгрейдов уменьшаем интервал выпуска на 0.01s (10 мс), минимум 0.1s
+                    this.speedUpgradeCount += 1;
+                    if (this.speedUpgradeCount % 5 === 0) {
+                        this.bulletIntervalMs = Math.max(100, this.bulletIntervalMs - 10);
+                    }
                     this.updateSpeedInfo();
 
                     // Обновить доступность кнопок
@@ -503,17 +510,20 @@ class Game {
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
             const speed = this.enemySpeedPxSec; // px/sec
-            const char = new Character(this, trackIndex, speed, this.baseHealth);
+            // Рандомный штраф к здоровью от 0% до 30% от базового
+            const healthPenaltyRatio = Math.random() * 0.3; // [0, 0.3]
+            const spawnHealth = Number((this.baseHealth * (1 - healthPenaltyRatio)).toFixed(1));
+            const char = new Character(this, trackIndex, speed, spawnHealth);
             this.characters.push(char);
             this.spawnsLeftInWave -= 1;
             this.nextSpawnMs += this.spawnIntervalMs;
         }
 
-        // Генерация пули каждую секунду, из текущей дорожки игрока
+        // Генерация пули с текущим интервалом, из дорожки игрока
         if (this.isRunning && elapsed >= this.nextBulletMs && this.player) {
             const bullet = new Bullet(this, this.player.trackIndex, this.bulletSpeedPxSec, this.bulletDamage);
             this.bullets.push(bullet);
-            this.nextBulletMs += 1000;
+            this.nextBulletMs += this.bulletIntervalMs;
         }
 
         requestAnimationFrame(this.loop);
@@ -573,6 +583,9 @@ class Game {
         // Сброс урона пули к начальному значению
         this.bulletDamage = 1.5;
         this.updateDamageInfo();
+        // Сброс частоты выпуска и счётчика апгрейдов скорости
+        this.bulletIntervalMs = 1000;
+        this.speedUpgradeCount = 0;
         
         // Перезапуск игры
         this.start();
