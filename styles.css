@@ -275,7 +275,7 @@ body {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    top: calc(100% + 4px); /* под игроком */
+    bottom: calc(100% + 4px); /* над игроком */
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -311,7 +311,8 @@ body {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 80px; /* сразу над пунктиром (пунктир на 60px) */
+    top: 50%; /* по центру экрана по вертикали */
+    transform: translateY(-50%);
     display: flex;
     height: 20px;
     z-index: 1600;

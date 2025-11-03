@@ -255,8 +255,8 @@ class Player {
         const lineRect = line.getBoundingClientRect();
         const trackTop = track.getBoundingClientRect().top;
         const playerHeight = this.element.getBoundingClientRect().height || 90;
-        // Расположить игрока НАД пунктиром: низ спрайта на 2px выше линии
-        const gapAboveLinePx = 2;
+        // 3/3 (100%) спрайта над линией: низ спрайта совпадает с верхом пунктира
+        const gapAboveLinePx = 0;
         const offsetTop = (lineRect.top - trackTop) - playerHeight - gapAboveLinePx;
         this.element.style.top = `${Math.max(0, Math.round(offsetTop))}px`;
     }
@@ -281,6 +281,9 @@ class Bullet {
         this.damage = typeof damage === 'number' ? damage : 1.0;
         this.element = document.createElement('div');
         this.element.className = 'bullet';
+        // В момент спавна пуля невидима 0.3с, затем проявляется
+        this.element.style.opacity = '0';
+        this.element.style.transition = 'opacity 0.1s linear';
         this.top = 0; // зададим ниже
 
         // Поместим пулю в нужную дорожку
@@ -295,6 +298,11 @@ class Bullet {
         const bulletH = this.element.getBoundingClientRect().height || 34;
         this.top = Math.max(0, lineTop - trackTop - bulletH / 2);
         this.element.style.top = `${this.top}px`;
+
+        // Отложенное проявление через 300 мс
+        setTimeout(() => {
+            this.element.style.opacity = '1';
+        }, 100);
 
         this.rafId = requestAnimationFrame(this.move.bind(this));
     }
@@ -1212,22 +1220,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Динамическая компоновка: вся сцена формируется строго выше надписей над кнопками + 2px
     function layoutScene() {
-        const field = document.querySelector('.game-field');
         const lineEl = document.querySelector('.horizontal-line');
-        const notesEl = document.querySelector('.track-labels');
-        const labelEls = document.querySelectorAll('.upgrade-label');
-        if (!field || !lineEl || !notesEl || labelEls.length === 0) return;
-
-        const labelTop = Math.min(...Array.from(labelEls).map(el => el.getBoundingClientRect().top));
-        const fieldRect = field.getBoundingClientRect();
-        const GAP_PX = 2; // отступ от значений над кнопками
-        const bottomOffset = Math.max(0, fieldRect.bottom - (labelTop - GAP_PX));
-
-        // Пунктир сразу над «ступенькой» (на 2px выше значений)
-        lineEl.style.bottom = `${bottomOffset}px`;
-        // Ноты сразу над пунктиром (20px вверх)
-        notesEl.style.bottom = `${bottomOffset + 20}px`;
-
+        if (lineEl) {
+            // Вернуть пунктир к стилям из CSS
+            lineEl.style.bottom = '';
+        }
         // Пересчитать позицию игрока относительно пунктира
         if (window._game && window._game.player) {
             window._game.player.updateVerticalPosition();
