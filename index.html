@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poketon Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Верхняя панель с балансом и секундомером -->
+        <div class="top-panel">
+            <div class="timer">00:00:00</div>
+            <div class="balance">0 PXP</div>
+        </div>
+
+        <!-- Игровое поле с дорожками -->
+        <div class="game-field">
+            <!-- Горизонтальная пунктирная линия -->
+            <div class="horizontal-line"></div>
+
+            <!-- Дорожки -->
+            <div class="tracks">
+                <div class="track"></div>
+                <div class="track"></div>
+                <div class="track"></div>
+                <div class="track"></div>
+                <div class="track"></div>
+                <div class="track"></div>
+                <div class="track"></div>
+            </div>
+        </div>
+
+        <!-- Панель с кнопками -->
+        <div class="button-panel">
+            <button class="upgrade-btn speed-btn" disabled>
+                <div class="btn-text">Update Speed</div>
+                <div class="btn-price">1 PXP</div>
+            </button>
+            <button class="upgrade-btn damage-btn" disabled>
+                <div class="btn-text">Update Damage</div>
+                <div class="btn-price">1 PXP</div>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

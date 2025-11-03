@@ -1,0 +1,192 @@
+/* Общие стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #000;
+    color: white;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.game-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #000;
+}
+
+/* Верхняя панель */
+.top-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    height: 60px;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.timer {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+}
+
+.balance {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffff00;
+}
+
+/* Игровое поле */
+.game-field {
+    flex: 1;
+    position: relative;
+    background-color: #000;
+}
+
+/* Горизонтальная пунктирная линия */
+.horizontal-line {
+    position: absolute;
+    bottom: 60px; /* Было 120px, теперь в два раза ближе */
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-image: linear-gradient(to right, #00aa00 50%, transparent 50%);
+    background-size: 20px 3px;
+    background-repeat: repeat-x;
+    opacity: 0.7;
+}
+
+/* Дорожки */
+.tracks {
+    display: flex;
+    height: 100%;
+}
+
+.track {
+    flex: 1;
+    border-right: 2px solid #00aa00;
+    opacity: 0.6;
+}
+
+.track:last-child {
+    border-right: none;
+}
+
+/* Панель с кнопками */
+.button-panel {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 20px;
+    height: 100px;
+    background-color: rgba(0, 0, 0, 0.8);
+    gap: 20px;
+}
+
+/* Кнопки обновлений */
+.upgrade-btn {
+    flex: 1;
+    max-width: 200px;
+    height: 60px;
+    background-color: #666;
+    border: 2px solid #999;
+    border-radius: 8px;
+    cursor: not-allowed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.upgrade-btn:hover {
+    background-color: #777;
+}
+
+.upgrade-btn:disabled {
+    opacity: 0.6;
+}
+
+.btn-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 2px;
+}
+
+.btn-price {
+    font-size: 12px;
+    color: #ffff00;
+    font-weight: bold;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .top-panel {
+        padding: 15px;
+        height: 50px;
+    }
+
+    .timer {
+        font-size: 18px;
+    }
+
+    .balance {
+        font-size: 16px;
+    }
+
+    .button-panel {
+        padding: 15px;
+        height: 80px;
+        gap: 10px; /* Убрал flex-direction: column, чтобы сохранить горизонтальное расположение */
+    }
+
+    .upgrade-btn {
+        max-width: none;
+        width: 100%;
+        height: 50px;
+    }
+
+    .horizontal-line {
+        bottom: 50px; /* Было 100px, теперь в два раза ближе */
+    }
+}
+
+@media (max-width: 480px) {
+    .top-panel {
+        padding: 10px;
+        height: 45px;
+    }
+
+    .timer {
+        font-size: 16px;
+    }
+
+    .balance {
+        font-size: 14px;
+    }
+
+    .button-panel {
+        padding: 10px;
+        height: 70px;
+    }
+
+    .upgrade-btn {
+        height: 45px;
+    }
+
+    .btn-text {
+        font-size: 12px;
+    }
+
+    .btn-price {
+        font-size: 10px;
+    }
+}
