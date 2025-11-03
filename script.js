@@ -92,6 +92,71 @@ class Balance {
     }
 }
 
+// Звук: проигрывание нот дорожек
+class AudioManager {
+    constructor() {
+        this.context = null;
+        // Ноты (Do-Re-Mi-Fa-Sol-La-Si) → частоты (октава 4)
+        this.noteFrequencies = {
+            Do: 261.63, // C4
+            Re: 293.66, // D4
+            Mi: 329.63, // E4
+            Fa: 349.23, // F4
+            Sol: 392.0, // G4
+            La: 440.0, // A4
+            Si: 493.88 // B4
+        };
+        // Индексы дорожек слева направо → ноты
+        this.trackToNote = ['Do','Re','Mi','Fa','Sol','La','Si'];
+        this.masterGain = null;
+    }
+
+    ensureContext() {
+        if (!this.context) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.context = new AudioCtx();
+            this.masterGain = this.context.createGain();
+            this.masterGain.gain.value = 0.6;
+            this.masterGain.connect(this.context.destination);
+        }
+        if (this.context.state === 'suspended') {
+            this.context.resume();
+        }
+    }
+
+    unlock() {
+        this.ensureContext();
+    }
+
+    playFrequency(freq, durationSec = 0.25) {
+        this.ensureContext();
+        const now = this.context.currentTime;
+        const osc = this.context.createOscillator();
+        const gain = this.context.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        // ADSR: быстрый аттак/декея для приятного щелчка
+        gain.gain.setValueAtTime(0.0, now);
+        gain.gain.linearRampToValueAtTime(0.9, now + 0.01);
+        gain.gain.linearRampToValueAtTime(0.5, now + 0.08);
+        gain.gain.linearRampToValueAtTime(0.0, now + durationSec);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + durationSec + 0.02);
+    }
+
+    playNoteByName(name) {
+        const freq = this.noteFrequencies[name];
+        if (freq) this.playFrequency(freq);
+    }
+
+    playNoteForTrack(trackIndex) {
+        const name = this.trackToNote[trackIndex];
+        if (name) this.playNoteByName(name);
+    }
+}
+
 // Класс для персонажа
 class Character {
     constructor(game, trackIndex, speed, health) {
@@ -269,6 +334,10 @@ class Player {
         tracks[newIndex].appendChild(node);
         this.trackIndex = newIndex;
         this.updateVerticalPosition();
+        // Сообщить игре о смене дорожки
+        if (this.game && typeof this.game.onPlayerTrackChanged === 'function') {
+            this.game.onPlayerTrackChanged(this.trackIndex);
+        }
     }
 }
 
@@ -710,6 +779,7 @@ class Game {
         this.bulletIntervalMs = 1000; // интервал выпуска пуль, мс
         this.speedUpgradeCount = 0; // число апгрейдов скорости
 
+        this.audio = new AudioManager();
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
         this.scheduleStart(1);
@@ -772,6 +842,7 @@ class Game {
                 } else {
                     this.player.setTrack(this.player.trackIndex + 1);
                 }
+                // Разблокировать аудио и проиграть нужную ноту (делает Player → Game)
             };
             field.addEventListener('click', this._fieldClickHandler);
         }
@@ -1145,6 +1216,13 @@ class Game {
         }
     }
 
+    onPlayerTrackChanged(trackIndex) {
+        if (this.audio) {
+            this.audio.unlock();
+            this.audio.playNoteForTrack(trackIndex);
+        }
+    }
+
     onBarrelHit(barrel) {
         // награда за бочку
         this.awardPxp(10, barrel.element);
@@ -1215,6 +1293,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+    // Разблокировать аудиоконтекст при первом взаимодействии
+    const unlockOnce = () => { if (game && game.audio) game.audio.unlock(); window.removeEventListener('pointerdown', unlockOnce); };
+    window.addEventListener('pointerdown', unlockOnce);
 
     // Слушатели на апгрейды обрабатываются внутри Game; здесь ничего не делаем
 
