@@ -11,6 +11,12 @@ body {
     color: white;
     height: 100vh;
     overflow: hidden;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; /* запрет копирования/выделения */
+    -webkit-touch-callout: none; /* iOS запрет контекстного меню */
+    touch-action: manipulation; /* снижение двойного тап-зума */
 }
 
 .game-container {

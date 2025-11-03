@@ -1191,5 +1191,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const balance = new Balance();
     const game = new Game(timer, balance);
 
+    // Блокируем копирование текста и контекстное меню
+    document.addEventListener('copy', function(e) { e.preventDefault(); });
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    // Блокируем zoom жестами и сочетаниями клавиш
+    window.addEventListener('wheel', function(e) { if (e.ctrlKey) { e.preventDefault(); } }, { passive: false });
+    window.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '0') {
+                e.preventDefault();
+            }
+        }
+    });
+    document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+
     // Слушатели на апгрейды обрабатываются внутри Game; здесь ничего не делаем
 });
