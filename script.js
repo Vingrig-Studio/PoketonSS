@@ -70,18 +70,22 @@ class Balance {
     checkUpgradeButtons() {
         const speedBtn = document.querySelector('.speed-btn');
         const damageBtn = document.querySelector('.damage-btn');
+        if (!speedBtn || !damageBtn) return;
 
-        const canAfford = this.amount >= 1;
-        speedBtn.disabled = !canAfford;
-        damageBtn.disabled = !canAfford;
+        const speedPrice = Number(speedBtn.dataset.price || 1);
+        const damagePrice = Number(damageBtn.dataset.price || 1);
 
-        if (canAfford) {
-            speedBtn.style.cursor = 'pointer';
-            damageBtn.style.cursor = 'pointer';
-        } else {
-            speedBtn.style.cursor = 'not-allowed';
-            damageBtn.style.cursor = 'not-allowed';
-        }
+        const canAffordSpeed = this.amount >= speedPrice;
+        const canAffordDamage = this.amount >= damagePrice;
+
+        speedBtn.disabled = !canAffordSpeed;
+        damageBtn.disabled = !canAffordDamage;
+
+        speedBtn.classList.toggle('can-afford', canAffordSpeed);
+        damageBtn.classList.toggle('can-afford', canAffordDamage);
+
+        speedBtn.style.cursor = canAffordSpeed ? 'pointer' : 'not-allowed';
+        damageBtn.style.cursor = canAffordDamage ? 'pointer' : 'not-allowed';
     }
 }
 
@@ -267,10 +271,11 @@ class Player {
 
 // Пуля
 class Bullet {
-    constructor(game, trackIndex, speed) {
+    constructor(game, trackIndex, speed, damage) {
         this.game = game;
         this.trackIndex = trackIndex;
         this.speed = speed; // px/sec (движение вверх)
+        this.damage = typeof damage === 'number' ? damage : 1.0;
         this.element = document.createElement('div');
         this.element.className = 'bullet';
         this.top = 0; // зададим ниже
@@ -306,7 +311,7 @@ class Bullet {
             })()
         );
         if (hitChar) {
-            hitChar.applyDamage(1);
+            hitChar.applyDamage(this.damage);
             this.destroy();
             return;
         }
@@ -360,10 +365,13 @@ class Game {
         this.bullets = [];
         this.nextBulletMs = Number.POSITIVE_INFINITY;
         
-        // Общая скорость объектов (враги и пули)
-        this.entitySpeedPxSec = 100; // px/сек
+        // Скорости объектов
+        this.enemySpeedPxSec = 100; // px/сек
+        this.bulletSpeedPxSec = 400; // px/сек (начальная скорость пули)
+        this.bulletDamage = 1.5; // урон пули (в сердцах)
 
         this.loop = this.loop.bind(this);
+        this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
         this.scheduleStart(1);
     }
 
@@ -414,6 +422,55 @@ class Game {
             };
             field.addEventListener('click', this._fieldClickHandler);
         }
+
+        // Обработчик апгрейда скорости
+        const speedBtn = document.querySelector('.speed-btn');
+        if (!this._speedClickHandler && speedBtn) {
+            this._speedClickHandler = () => {
+                const price = Number(speedBtn.dataset.price || 1);
+                if (this.balance.subtract(price)) {
+                    // Повышаем цену: +1 к предыдущей
+                    const newPrice = price + 1;
+                    speedBtn.dataset.price = String(newPrice);
+                    const priceEl = speedBtn.querySelector('.btn-price');
+                    if (priceEl) priceEl.textContent = `${newPrice} PXP`;
+
+                    // Увеличиваем скорость пули на +10 px/сек
+                    this.bulletSpeedPxSec += 10;
+                    this.updateSpeedInfo();
+
+                    // Обновить доступность кнопок
+                    this.balance.checkUpgradeButtons();
+                }
+            };
+            speedBtn.addEventListener('click', this._speedClickHandler);
+        }
+
+        // Обработчик апгрейда урона
+        const damageBtn = document.querySelector('.damage-btn');
+        if (!this._damageClickHandler && damageBtn) {
+            this._damageClickHandler = () => {
+                const price = Number(damageBtn.dataset.price || 1);
+                if (this.balance.subtract(price)) {
+                    const newPrice = price + 1;
+                    damageBtn.dataset.price = String(newPrice);
+                    const priceEl = damageBtn.querySelector('.btn-price');
+                    if (priceEl) priceEl.textContent = `${newPrice} PXP`;
+
+                    // Увеличиваем урон пули на +0.2
+                    this.bulletDamage = Number((this.bulletDamage + 0.2).toFixed(1));
+                    this.updateDamageInfo();
+
+                    this.balance.checkUpgradeButtons();
+                }
+            };
+            damageBtn.addEventListener('click', this._damageClickHandler);
+        }
+
+        // При старте обновить состояние кнопок и индикаторы
+        this.balance.checkUpgradeButtons();
+        this.updateSpeedInfo();
+        this.updateDamageInfo();
     }
 
     loop() {
@@ -441,7 +498,7 @@ class Game {
         // Спавн в рамках текущей волны
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
-            const speed = this.entitySpeedPxSec; // px/sec
+            const speed = this.enemySpeedPxSec; // px/sec
             const char = new Character(this, trackIndex, speed, this.baseHealth);
             this.characters.push(char);
             this.spawnsLeftInWave -= 1;
@@ -450,7 +507,7 @@ class Game {
 
         // Генерация пули каждую секунду, из текущей дорожки игрока
         if (this.isRunning && elapsed >= this.nextBulletMs && this.player) {
-            const bullet = new Bullet(this, this.player.trackIndex, this.entitySpeedPxSec);
+            const bullet = new Bullet(this, this.player.trackIndex, this.bulletSpeedPxSec, this.bulletDamage);
             this.bullets.push(bullet);
             this.nextBulletMs += 1000;
         }
@@ -486,7 +543,47 @@ class Game {
         this.timer.start(); // перезапуск секундомера
         this.baseHealth = 1.0;
         this.lastHealthSecond = 0;
+        // Сброс цен на апгрейды
+        const speedBtn = document.getElementById('speed-btn');
+        if (speedBtn) {
+            speedBtn.dataset.price = '1';
+            const priceEl = speedBtn.querySelector('.btn-price');
+            if (priceEl) priceEl.textContent = '1 PXP';
+            speedBtn.classList.remove('can-afford');
+            speedBtn.disabled = true;
+        }
+        const damageBtn = document.getElementById('damage-btn');
+        if (damageBtn) {
+            damageBtn.dataset.price = '1';
+            const priceEl = damageBtn.querySelector('.btn-price');
+            if (priceEl) priceEl.textContent = '1 PXP';
+            damageBtn.classList.remove('can-afford');
+            damageBtn.disabled = true;
+        }
+
+        // Сброс скорости пуль к начальному значению
+        this.bulletSpeedPxSec = 400;
+        this.updateSpeedInfo();
+        // Сброс урона пули к начальному значению
+        this.bulletDamage = 1.5;
+        this.updateDamageInfo();
+        
+        // Перезапуск игры
         this.start();
+    }
+
+    updateSpeedInfo() {
+        const el = document.getElementById('speed-info');
+        if (el) {
+            el.textContent = `${this.bulletSpeedPxSec} px/сек`;
+        }
+    }
+
+    updateDamageInfo() {
+        const el = document.getElementById('damage-info');
+        if (el) {
+            el.textContent = `${this.bulletDamage.toFixed(1)} ❤`;
+        }
     }
 }
 
@@ -496,20 +593,5 @@ document.addEventListener('DOMContentLoaded', function() {
     const balance = new Balance();
     const game = new Game(timer, balance);
 
-    // Обработчики кнопок обновлений
-    document.querySelector('.speed-btn').addEventListener('click', function() {
-        if (balance.subtract(1)) {
-            console.log('Speed upgraded!');
-            // Здесь будет логика обновления скорости
-        }
-    });
-
-    document.querySelector('.damage-btn').addEventListener('click', function() {
-        if (balance.subtract(1)) {
-            console.log('Damage upgraded!');
-            // Здесь будет логика обновления урона
-        }
-    });
-
-    // Клики по полю теперь используются только для перемещения игрока, без начисления PXP
+    // Слушатели на апгрейды обрабатываются внутри Game; здесь ничего не делаем
 });

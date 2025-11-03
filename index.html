@@ -35,14 +35,20 @@
 
         <!-- Панель с кнопками -->
         <div class="button-panel">
-            <button class="upgrade-btn speed-btn" disabled>
-                <div class="btn-text">Update Speed</div>
-                <div class="btn-price">1 PXP</div>
-            </button>
-            <button class="upgrade-btn damage-btn" disabled>
-                <div class="btn-text">Update Damage</div>
-                <div class="btn-price">1 PXP</div>
-            </button>
+            <div class="upgrade-group">
+                <div id="speed-info" class="upgrade-label">400 px/сек</div>
+                <button id="speed-btn" class="upgrade-btn speed-btn" data-price="1" disabled>
+                    <div class="btn-text">Update Speed</div>
+                    <div class="btn-price">1 PXP</div>
+                </button>
+            </div>
+            <div class="upgrade-group">
+                <div id="damage-info" class="upgrade-label">1.5 ❤</div>
+                <button id="damage-btn" class="upgrade-btn damage-btn" data-price="1" disabled>
+                    <div class="btn-text">Update Damage</div>
+                    <div class="btn-price">1 PXP</div>
+                </button>
+            </div>
         </div>
         <!-- Поп‑ап рестарта -->
         <div id="overlay" class="overlay" style="display:none;">
