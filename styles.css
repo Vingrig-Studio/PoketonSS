@@ -73,6 +73,113 @@ body {
     flex: 1;
     border-right: 2px solid #00aa00;
     opacity: 0.6;
+    position: relative; /* чтобы абсолютные персонажи позиционировались внутри дорожки */
+}
+
+/* Персонажи (контейнер анимации) */
+.character {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%; /* вписаться по ширине дорожки */
+    max-width: 100%;
+    height: 90px; /* базовая высота; при необходимости можно подправить */
+    pointer-events: none; /* чтобы клики проходили сквозь */
+}
+
+.character .hp {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -18px; /* под персонажем */
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 1;
+    color: #e0e0e0;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.character .hp .heart {
+    color: #e53935;
+}
+
+/* Поп‑ап кнопка рестарта */
+#restart-btn {
+    padding: 12px 24px;
+    font-size: 18px;
+    background-color: #c62828;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#restart-btn:hover {
+    background-color: #b71c1c;
+}
+
+/* Overlay поп‑ап */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.popup {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 24px 28px;
+    text-align: center;
+}
+
+.popup-title {
+    font-size: 22px;
+    margin-bottom: 12px;
+}
+
+.popup-time {
+    font-size: 18px;
+    color: #ffff00;
+    margin-bottom: 16px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Игрок */
+.player {
+    position: absolute;
+    width: 100%;
+    max-width: 100%;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    height: 90px;
+    pointer-events: none;
+}
+
+.player .hp {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(100% + 4px); /* под игроком */
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #e0e0e0;
+    pointer-events: none;
+}
+
+.player .hp .heart {
+    color: #e53935;
 }
 
 .track:last-child {
