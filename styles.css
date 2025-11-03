@@ -34,6 +34,7 @@ body {
     padding: 20px;
     height: 60px;
     background-color: rgba(0, 0, 0, 0.8);
+    position: relative; /* для центрирования жизней */
 }
 
 .timer {
@@ -47,6 +48,17 @@ body {
     font-size: 20px;
     font-weight: bold;
     color: #ffff00;
+}
+
+.lives-top {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    font-weight: bold;
+    color: #ff6666;
+    pointer-events: none;
 }
 
 .lives {
@@ -73,7 +85,7 @@ body {
     background-image: linear-gradient(to right, #00aa00 50%, transparent 50%);
     background-size: 20px 3px;
     background-repeat: repeat-x;
-    opacity: 0.7;
+    opacity: 0.35; /* в два раза прозрачнее */
     z-index: 1500; /* пунктир над спрайтом игрока */
 }
 
@@ -85,8 +97,9 @@ body {
 
 .track {
     flex: 1;
-    border-right: 2px solid #00aa00;
-    opacity: 0.6;
+    /* делаем линию более прозрачной через цвет границы,
+       чтобы не влиять на потомков (персонажи/пули остаются непрозрачными) */
+    border-right: 2px solid rgba(0, 170, 0, 0.3);
     position: relative; /* чтобы абсолютные персонажи позиционировались внутри дорожки */
 }
 
@@ -135,6 +148,18 @@ body {
     width: 100%;
     max-width: 100%;
     height: 90px;
+    pointer-events: none;
+}
+
+/* Сердце (добавляет жизнь) */
+.heart-item {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 80px;
     pointer-events: none;
 }
 
@@ -271,19 +296,7 @@ body {
     z-index: 1400; /* над панелью, ниже пунктира */
 }
 
-.player .hp {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(100% + 4px); /* над игроком */
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #e0e0e0;
-    pointer-events: none;
-    z-index: 1401;
-}
+.player .hp { display: none; }
 
 .player .hp .heart {
     color: #e53935;
@@ -292,12 +305,12 @@ body {
 /* Пули */
 .bullet {
     position: absolute;
-    width: 14px;
-    height: 34px;
+    width: 7px;  /* было 14px */
+    height: 17px; /* было 34px */
     left: 50%;
     transform: translateX(-50%);
     background: #ff4da6; /* розовый */
-    border-radius: 12px / 18px; /* вертикально сплющенный овал */
+    border-radius: 6px / 9px; /* пропорционально уменьшено */
     box-shadow: 0 0 6px rgba(255, 77, 166, 0.6);
     pointer-events: none;
 }
@@ -324,7 +337,7 @@ body {
     font-size: 12px;
     color: #66ff66;
     font-family: 'Courier New', monospace;
-    opacity: 0.9;
+    opacity: 0.45; /* в два раза прозрачнее */
 }
 
 /* Панель с кнопками */

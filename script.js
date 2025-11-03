@@ -401,6 +401,15 @@ class Bullet {
             this.destroy();
             return;
         }
+        const hitHeart = this.game.hearts && this.game.hearts.find(h => h.trackIndex === this.trackIndex && (function(){
+            const hr = h.element.getBoundingClientRect();
+            return bulletRect.bottom >= hr.top && bulletRect.top <= hr.bottom;
+        })());
+        if (hitHeart) {
+            this.game.onHeartHit(hitHeart);
+            this.destroy();
+            return;
+        }
         const hitBee = this.game.bees && this.game.bees.find(b => b.trackIndex === this.trackIndex && (function(){
             const br = b.element.getBoundingClientRect();
             return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
@@ -638,6 +647,61 @@ class Bee {
     }
 }
 
+// Сердце (даёт +1 жизнь при попадании)
+class HeartItem {
+    constructor(game, trackIndex, speed) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'heart-item';
+        this.top = -90;
+        this.element.style.top = `${this.top}px`;
+        this.loadAnimation();
+
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        tryFetch('h.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    move() {
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            this.game.removeHeart(this);
+            this.destroy();
+            return;
+        }
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        if (this.animation) this.animation.destroy();
+        this.element.remove();
+    }
+}
+
 // Босс
 class Boss {
     constructor(game, trackIndex, speed, health) {
@@ -771,6 +835,8 @@ class Game {
         // Боссы
         this.bosses = [];
         this.lastBossMinute = -1;
+        // Сердца
+        this.hearts = [];
         
         // Скорости объектов
         this.enemySpeedPxSec = 100; // px/сек
@@ -962,6 +1028,11 @@ class Game {
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
             const speed = this.enemySpeedPxSec; // px/sec
+            // С шансом 1/30 появляется сердце
+            if (Math.random() < 1/30) {
+                const heart = new HeartItem(this, trackIndex, speed);
+                this.hearts.push(heart);
+            } else {
             // В окне 5..30с с шансом 1/30 появляется бочка; шанс усиливается при низких жизнях
             const seconds = Math.floor(this.timer.getElapsedTime() / 1000);
             const baseProb = 1 / 30;
@@ -977,6 +1048,7 @@ class Game {
                 const spawnHealth = Number((this.baseHealth * (1 - healthPenaltyRatio)).toFixed(1));
                 const char = new Character(this, trackIndex, speed, spawnHealth);
                 this.characters.push(char);
+            }
             }
             this.spawnsLeftInWave -= 1;
             this.nextSpawnMs += this.spawnIntervalMs;
@@ -1045,6 +1117,11 @@ class Game {
         if (idx !== -1) this.bosses.splice(idx, 1);
     }
 
+    removeHeart(heart) {
+        const idx = this.hearts.indexOf(heart);
+        if (idx !== -1) this.hearts.splice(idx, 1);
+    }
+
     gameOver() {
         if (!this.isRunning) return;
         this.isRunning = false;
@@ -1061,6 +1138,7 @@ class Game {
         this.bosses = [];
         this.bullets.forEach(b => b.destroy());
         this.bullets = [];
+        if (this.hearts) { this.hearts.forEach(h => h.destroy()); this.hearts = []; }
         if (this.overlay) this.overlay.style.display = 'flex';
         // гарантируем наличие гиперссылки в поп-апе
         this.ensureDevLink();
@@ -1210,10 +1288,8 @@ class Game {
     }
 
     updateLivesDisplay() {
-        if (this.player && this.player.hpEl) {
-            const valueEl = this.player.hpEl.querySelector('.value');
-            if (valueEl) valueEl.textContent = String(this.lives);
-        }
+        const topLives = document.getElementById('lives-top');
+        if (topLives) topLives.textContent = `❤ ${this.lives}`;
     }
 
     onPlayerTrackChanged(trackIndex) {
@@ -1261,6 +1337,15 @@ class Game {
         this.balance.updateDisplay();
         // Показать множитель x2
         this.showMultiplierAtElement(boss.element, '×2');
+    }
+
+    onHeartHit(heart) {
+        this.removeHeart(heart);
+        heart.destroy();
+        this.lives += 1;
+        this.updateLivesDisplay();
+        // небольшой визуальный эффект
+        this.showMultiplierAtElement(heart.element, '+1❤');
     }
 
     onBeeHit(bee) {
