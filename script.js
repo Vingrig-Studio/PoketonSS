@@ -147,7 +147,11 @@ class Character {
         if (this.hpEl) this.hpEl.querySelector('.value').textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
         if (this.health <= 0) {
             this.isActive = false;
+            // Засчитываем награду только если смерть наступила от урона (пули)
             this.game.removeCharacter(this);
+            if (this.game && this.game.balance) {
+                this.game.balance.add(1);
+            }
             this.destroy();
         }
     }
@@ -456,7 +460,9 @@ class Game {
 
     removeCharacter(char) {
         const idx = this.characters.indexOf(char);
-        if (idx !== -1) this.characters.splice(idx, 1);
+        if (idx !== -1) {
+            this.characters.splice(idx, 1);
+        }
     }
 
     gameOver() {
@@ -505,8 +511,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Для тестирования - добавление PXP по клику на игровое поле
-    document.querySelector('.game-field').addEventListener('click', function() {
-        balance.add(1);
-    });
+    // Клики по полю теперь используются только для перемещения игрока, без начисления PXP
 });
