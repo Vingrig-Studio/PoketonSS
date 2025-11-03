@@ -153,6 +153,26 @@ body {
     font-family: 'Courier New', monospace;
 }
 
+/* Всплывающее начисление PXP */
+.pxp-float {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #ffd800;
+    font-weight: bold;
+    font-size: 14px;
+    text-shadow: 0 0 6px rgba(255, 216, 0, 0.6);
+    pointer-events: none;
+    transform: translate(-50%, 0);
+    animation: pxpUp 1s ease-out forwards;
+    z-index: 900;
+}
+
+@keyframes pxpUp {
+    0% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -40px); }
+}
+
 /* Игрок */
 .player {
     position: absolute;

@@ -48,11 +48,14 @@ class Balance {
     }
 
     updateDisplay() {
-        this.balanceElement.textContent = `${this.amount} PXP`;
+        const display = Number.isInteger(this.amount)
+            ? this.amount
+            : this.amount.toFixed(2);
+        this.balanceElement.textContent = `${display} PXP`;
     }
 
     add(amount) {
-        this.amount += amount;
+        this.amount = Number((this.amount + amount).toFixed(2));
         this.updateDisplay();
         this.checkUpgradeButtons();
     }
@@ -152,10 +155,8 @@ class Character {
         if (this.health <= 0) {
             this.isActive = false;
             // Засчитываем награду только если смерть наступила от урона (пули)
+            if (this.game) this.game.awardPxp(this.game.getCurrentLoot(), this.element);
             this.game.removeCharacter(this);
-            if (this.game && this.game.balance) {
-                this.game.balance.add(1);
-            }
             this.destroy();
         }
     }
@@ -584,6 +585,35 @@ class Game {
         if (el) {
             el.textContent = `${this.bulletDamage.toFixed(1)} ❤`;
         }
+    }
+
+    showPxpGainAtElement(element, amount) {
+        const field = document.querySelector('.game-field');
+        if (!field || !element) return;
+        const fieldRect = field.getBoundingClientRect();
+        const elRect = element.getBoundingClientRect();
+        const x = elRect.left + elRect.width / 2 - fieldRect.left;
+        const y = elRect.top - fieldRect.top;
+        const tag = document.createElement('div');
+        tag.className = 'pxp-float';
+        tag.style.left = `${x}px`;
+        tag.style.top = `${y}px`;
+        const amountText = Number.isInteger(amount) ? amount : Number(amount).toFixed(2);
+        tag.textContent = `+${amountText} PXP`;
+        field.appendChild(tag);
+        setTimeout(() => tag.remove(), 1000);
+    }
+
+    awardPxp(amount, atElement) {
+        if (this.balance) this.balance.add(amount);
+        this.showPxpGainAtElement(atElement, amount);
+    }
+
+    getCurrentLoot() {
+        const elapsedMs = this.timer.getElapsedTime();
+        const seconds = Math.floor(elapsedMs / 1000); // прошедшие полные секунды
+        const loot = 0.5 + seconds * 0.05; // старт 0.5 и +0.05 за каждую секунду
+        return Number(loot.toFixed(2));
     }
 }
 
