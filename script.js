@@ -23,6 +23,30 @@ class Timer {
     updateDisplay() {
         const elapsed = Date.now() - this.startTime;
         this.timerElement.textContent = this.formatMs(elapsed);
+        this.updateRank(elapsed);
+    }
+
+    updateRank(elapsed) {
+        const minutes = Math.floor(elapsed / (1000 * 60));
+        const rankElement = document.getElementById('rank-display');
+        if (!rankElement) return;
+        
+        rankElement.textContent = `Rank: ${minutes}`;
+        
+        // Изменение цвета в зависимости от ранга
+        if (minutes >= 30) {
+            rankElement.style.color = '#800080'; // фиолетовый
+        } else if (minutes >= 20) {
+            rankElement.style.color = '#00CED1'; // бирюзовый
+        } else if (minutes >= 15) {
+            rankElement.style.color = '#FF0000'; // красный
+        } else if (minutes >= 10) {
+            rankElement.style.color = '#00FF00'; // зеленый
+        } else if (minutes >= 5) {
+            rankElement.style.color = '#FFFF00'; // желтый
+        } else {
+            rankElement.style.color = '#FFFFFF'; // белый
+        }
     }
 
     getElapsedTime() {

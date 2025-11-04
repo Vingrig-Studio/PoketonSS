@@ -66,6 +66,14 @@ body.bg-green {
     pointer-events: none;
 }
 
+.rank-display {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    pointer-events: none;
+    transition: color 0.3s ease;
+}
+
 .pause-btn {
     width: 40px;
     height: 40px;
