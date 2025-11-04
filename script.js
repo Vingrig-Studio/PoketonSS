@@ -113,6 +113,24 @@ class Balance {
 
         speedBtn.style.cursor = canAffordSpeed ? 'pointer' : 'not-allowed';
         damageBtn.style.cursor = canAffordDamage ? 'pointer' : 'not-allowed';
+        
+        // Автоматическая покупка скорости, если включена галочка и кнопка зелёная
+        if (window.game && window.game.autoBuySpeedEnabled && canAffordSpeed) {
+            setTimeout(() => {
+                if (speedBtn.classList.contains('can-afford') && window.game.autoBuySpeedEnabled) {
+                    speedBtn.click();
+                }
+            }, 50);
+        }
+        
+        // Автоматическая покупка урона, если включена галочка и кнопка зелёная
+        if (window.game && window.game.autoBuyDamageEnabled && canAffordDamage) {
+            setTimeout(() => {
+                if (damageBtn.classList.contains('can-afford') && window.game.autoBuyDamageEnabled) {
+                    damageBtn.click();
+                }
+            }, 50);
+        }
     }
 }
 
@@ -1214,6 +1232,19 @@ class Game {
         this.restartPauseBtn.addEventListener('click', this.restart.bind(this));
         this.pauseBtn = document.getElementById('pause-btn');
         this.pauseBtn.addEventListener('click', this.pauseGame.bind(this));
+        
+        // Авто-покупка
+        this.autoBuySpeedEnabled = false;
+        this.autoBuyDamageEnabled = false;
+        
+        this.autoBuySpeedCheckbox = document.getElementById('auto-buy-speed-checkbox');
+        this.autoBuySpeedCheckmark = document.getElementById('auto-buy-speed-checkmark');
+        this.autoBuySpeedCheckbox.addEventListener('click', () => this.toggleAutoBuy('speed'));
+        
+        this.autoBuyDamageCheckbox = document.getElementById('auto-buy-damage-checkbox');
+        this.autoBuyDamageCheckmark = document.getElementById('auto-buy-damage-checkmark');
+        this.autoBuyDamageCheckbox.addEventListener('click', () => this.toggleAutoBuy('damage'));
+        
         this.lives = 3;
         
         this.waveNumber = 0;
@@ -1356,8 +1387,8 @@ class Game {
                     const priceEl = speedBtn.querySelector('.btn-price');
                     if (priceEl) priceEl.textContent = `${newPrice} PXP`;
 
-                    // Увеличиваем скорость пули на +10 px/сек
-                    this.bulletSpeedPxSec += 10;
+                    // Увеличиваем скорость пули на +30 px/сек
+                    this.bulletSpeedPxSec += 30;
                     // Каждые 5 апгрейдов уменьшаем интервал выпуска на 0.01s (10 мс), минимум 0.1s
                     this.speedUpgradeCount += 1;
                     if (this.speedUpgradeCount % 5 === 0) {
@@ -1810,6 +1841,44 @@ class Game {
         }
     }
 
+    toggleAutoBuy(type) {
+        if (type === 'speed') {
+            // Если включаем speed, выключаем damage
+            if (!this.autoBuySpeedEnabled) {
+                this.autoBuySpeedEnabled = true;
+                this.autoBuySpeedCheckbox.classList.add('checked');
+                this.autoBuySpeedCheckmark.style.display = 'block';
+                
+                // Выключить damage
+                this.autoBuyDamageEnabled = false;
+                this.autoBuyDamageCheckbox.classList.remove('checked');
+                this.autoBuyDamageCheckmark.style.display = 'none';
+            } else {
+                // Выключаем speed
+                this.autoBuySpeedEnabled = false;
+                this.autoBuySpeedCheckbox.classList.remove('checked');
+                this.autoBuySpeedCheckmark.style.display = 'none';
+            }
+        } else if (type === 'damage') {
+            // Если включаем damage, выключаем speed
+            if (!this.autoBuyDamageEnabled) {
+                this.autoBuyDamageEnabled = true;
+                this.autoBuyDamageCheckbox.classList.add('checked');
+                this.autoBuyDamageCheckmark.style.display = 'block';
+                
+                // Выключить speed
+                this.autoBuySpeedEnabled = false;
+                this.autoBuySpeedCheckbox.classList.remove('checked');
+                this.autoBuySpeedCheckmark.style.display = 'none';
+            } else {
+                // Выключаем damage
+                this.autoBuyDamageEnabled = false;
+                this.autoBuyDamageCheckbox.classList.remove('checked');
+                this.autoBuyDamageCheckmark.style.display = 'none';
+            }
+        }
+    }
+
     awardPxp(amount, atElement) {
         if (this.balance) this.balance.add(amount);
         this.showPxpGainAtElement(atElement, amount);
@@ -1956,8 +2025,8 @@ class Game {
         if (!tracks[trackIndex]) return;
         
         const trackRect = tracks[trackIndex].getBoundingClientRect();
-        const x = trackRect.left + (trackRect.width / 2) - 100; // центр дорожки
-        const y = Math.random() * (window.innerHeight - 200);
+        const x = trackRect.left + (trackRect.width / 2) - 45; // центр дорожки (90px / 2 = 45px)
+        const y = Math.random() * (window.innerHeight - 90);
         
         container.style.left = `${x}px`;
         container.style.top = `${y}px`;
@@ -2000,8 +2069,8 @@ class Game {
         container.className = 'hai-animation';
         
         // Рандомная позиция на экране
-        const maxX = window.innerWidth - 200;
-        const maxY = window.innerHeight - 200;
+        const maxX = window.innerWidth - 90;
+        const maxY = window.innerHeight - 90;
         const x = Math.max(0, Math.random() * maxX);
         const y = Math.max(0, Math.random() * maxY);
         
@@ -2048,6 +2117,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const balance = new Balance();
     const game = new Game(timer, balance);
     window._game = game;
+    window.game = game; // для доступа из Balance.checkUpgradeButtons()
 
     // Блокируем копирование текста и контекстное меню
     document.addEventListener('copy', function(e) { e.preventDefault(); });

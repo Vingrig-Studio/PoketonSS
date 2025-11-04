@@ -114,8 +114,8 @@ body.bg-green {
 /* Звезда (hai.tgs) на фоне */
 .hai-animation {
     position: fixed;
-    width: 200px;
-    height: 200px;
+    width: 90px;
+    height: 90px;
     opacity: 0.1;
     z-index: 15;
     pointer-events: none; /* не реагирует на клики */
@@ -474,6 +474,50 @@ body.bg-green {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+.auto-buy-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.auto-buy-checkbox {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #999;
+    border-radius: 6px;
+    background-color: #222;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.auto-buy-checkbox:hover {
+    background-color: #333;
+    border-color: #aaa;
+}
+
+.auto-buy-checkbox.checked {
+    background-color: #2e7d32;
+    border-color: #4caf50;
+}
+
+.checkmark {
+    font-size: 28px;
+    color: white;
+    font-weight: bold;
+}
+
+.auto-buy-label {
+    font-size: 12px;
+    color: #66bb6a;
+    text-align: center;
+    font-weight: 400;
+    margin-bottom: 6px;
 }
 
 .upgrade-label {
