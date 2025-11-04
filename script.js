@@ -434,12 +434,44 @@ class Bullet {
             return;
         }
 
-        const hitBoss = this.game.bosses && this.game.bosses.find(b => b.trackIndex === this.trackIndex && (function(){
+        const hitBoss = this.game.bosses && this.game.bosses.find(b => b.trackIndex === this.trackIndex && b.isActive && (function(){
             const br = b.element.getBoundingClientRect();
             return bulletRect.bottom >= br.top && bulletRect.top <= br.bottom;
         })());
         if (hitBoss) {
             hitBoss.applyDamage(this.damage);
+            this.destroy();
+            return;
+        }
+
+        const hitDevil = this.game.devils && this.game.devils.find(d => d.trackIndex === this.trackIndex && d.isActive && (function(){
+            const dr = d.element.getBoundingClientRect();
+            return bulletRect.bottom >= dr.top && bulletRect.top <= dr.bottom;
+        })());
+        if (hitDevil) {
+            hitDevil.applyDamage(this.damage);
+            this.destroy();
+            return;
+        }
+
+        const hitMinion = this.game.minions && this.game.minions.find(m => {
+            if (!m || !m.isActive || m.trackIndex !== this.trackIndex) return false;
+            if (!m.element || !m.element.parentNode) return false;
+            try {
+                const mr = m.element.getBoundingClientRect();
+                return bulletRect.bottom >= mr.top && bulletRect.top <= mr.bottom;
+            } catch (e) {
+                return false;
+            }
+        });
+        if (hitMinion) {
+            hitMinion.applyDamage(this.damage);
+            // Немедленно скрываем и удаляем пулю
+            if (this.element) {
+                this.element.style.display = 'none';
+                this.element.style.visibility = 'hidden';
+                this.element.style.opacity = '0';
+            }
             this.destroy();
             return;
         }
@@ -456,8 +488,59 @@ class Bullet {
     }
 
     destroy() {
-        if (this.rafId) cancelAnimationFrame(this.rafId);
-        this.element.remove();
+        // Останавливаем анимацию движения
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        
+        // Удаляем пулю из DOM
+        if (this.element) {
+            // Сохраняем ссылку на родителя
+            const parent = this.element.parentNode;
+            
+            // Скрываем пулю
+            try {
+                this.element.style.display = 'none';
+                this.element.style.visibility = 'hidden';
+                this.element.style.opacity = '0';
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+            
+            // Удаляем элемент из DOM
+            if (parent) {
+                try {
+                    parent.removeChild(this.element);
+                } catch (e) {
+                    // Если removeChild не сработал, пробуем remove()
+                    try {
+                        if (this.element.parentNode) {
+                            this.element.remove();
+                        }
+                    } catch (e2) {
+                        // Игнорируем ошибки
+                    }
+                }
+            } else {
+                // Если родителя нет, пробуем remove() напрямую
+                try {
+                    this.element.remove();
+                } catch (e) {
+                    // Игнорируем ошибки
+                }
+            }
+            
+            // Очищаем все стили и содержимое
+            try {
+                this.element.innerHTML = '';
+                this.element.style.cssText = '';
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+            
+            this.element = null;
+        }
     }
 }
 
@@ -789,6 +872,182 @@ class Boss {
     }
 }
 
+// Слуга дьявола (6666.tgs)
+class Minion extends Character {
+    constructor(game, trackIndex, speed, health) {
+        super(game, trackIndex, speed, health * 0.6); // 60% от здоровья персонажа (100% - 40%)
+        this.initialHealth = this.health; // для лута
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        tryFetch('6666.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+}
+
+// Дьявол (666.tgs)
+class Devil {
+    constructor(game, trackIndex, speed, health) {
+        this.game = game;
+        this.trackIndex = trackIndex;
+        this.speed = speed;
+        this.element = document.createElement('div');
+        this.element.className = 'devil';
+        this.top = -120;
+        this.element.style.top = `${this.top}px`;
+        this.health = health;
+        this.isActive = true;
+        this.loadAnimation();
+        this.renderHp();
+        this.nextMinionSpawnMs = this.game.timer.getElapsedTime() + 1000; // первый слуга через 1 секунду
+        
+        this.maxMinions = Math.floor(Math.random() * 5) + 2; // рандомно 2-6 слуг
+        this.spawnedMinions = 0;
+        
+        const tracks = document.querySelectorAll('.track');
+        tracks[this.trackIndex].appendChild(this.element);
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    loadAnimation() {
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        tryFetch('666.tgs').then(anim => {
+            this.animation = lottie.loadAnimation({
+                container: this.element,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+        }).catch(() => {});
+    }
+
+    renderHp() {
+        if (this.hpEl) this.hpEl.remove();
+        const hp = document.createElement('div');
+        hp.className = 'hp';
+        const heart = document.createElement('span');
+        heart.className = 'heart';
+        heart.textContent = '❤';
+        const text = document.createElement('span');
+        text.className = 'value';
+        text.textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
+        hp.appendChild(heart);
+        hp.appendChild(text);
+        this.element.appendChild(hp);
+        this.hpEl = hp;
+    }
+
+    applyDamage(amount) {
+        if (!this.isActive) return;
+        this.health = Number((this.health - amount).toFixed(1));
+        if (this.hpEl) this.hpEl.querySelector('.value').textContent = this.health.toFixed(1).replace(/\.0$/, '.0');
+        if (this.health <= 0) {
+            this.isActive = false;
+            this.game.onDevilKilled(this);
+            this.destroy();
+        }
+    }
+
+    spawnMinion() {
+        if (!this.isActive) return;
+        if (this.spawnedMinions >= this.maxMinions) return;
+        
+        const baseHealth = this.game.getBaseHealth(); // предполагаю метод для получения текущего базового здоровья
+        const minionHealth = baseHealth; // базовое, затем в constructor *0.6
+        const minionTrack = this.trackIndex;
+        const minion = new Minion(this.game, minionTrack, this.game.enemySpeedPxSec, minionHealth);
+        this.game.minions.push(minion);
+        
+        this.spawnedMinions++;
+    }
+
+    move() {
+        if (!this.isActive) return;
+        this.top += this.speed / 60;
+        this.element.style.top = `${Math.round(this.top)}px`;
+
+        // Генерация слуг каждые 1 секунду (пока дьявол жив)
+        const elapsed = this.game.timer.getElapsedTime();
+        if (elapsed >= this.nextMinionSpawnMs) {
+            this.spawnMinion();
+            this.nextMinionSpawnMs = elapsed + 1000; // 1 секунда = 1000 мс
+        }
+
+        const horizontalLine = document.querySelector('.horizontal-line');
+        const linePosition = horizontalLine.getBoundingClientRect().top;
+        const objBottom = this.element.getBoundingClientRect().bottom;
+        if (objBottom >= linePosition) {
+            this.isActive = false;
+            this.game.onEnemyReachedLine(this);
+            return;
+        }
+        this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    destroy() {
+        this.isActive = false;
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.animation) {
+            try {
+                this.animation.destroy();
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+            this.animation = null;
+        }
+        // Удаляем элемент HP перед удалением основного элемента
+        if (this.hpEl && this.hpEl.parentNode) {
+            try {
+                this.hpEl.parentNode.removeChild(this.hpEl);
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+            this.hpEl = null;
+        }
+        if (this.element) {
+            // Удаляем элемент из DOM, если он там есть
+            if (this.element.parentNode) {
+                try {
+                    this.element.parentNode.removeChild(this.element);
+                } catch (e) {
+                    // Если removeChild не сработал, пробуем remove()
+                    try {
+                        this.element.remove();
+                    } catch (e2) {
+                        console.warn('Не удалось удалить элемент дьявола:', e2);
+                    }
+                }
+            } else {
+                // Если parentNode отсутствует, пробуем remove()
+                try {
+                    this.element.remove();
+                } catch (e) {
+                    console.warn('Не удалось удалить элемент дьявола (нет parentNode):', e);
+                }
+            }
+            this.element = null;
+        }
+    }
+}
+
 // Класс игры
 class Game {
     constructor(timer, balance) {
@@ -837,6 +1096,11 @@ class Game {
         this.lastBossMinute = -1;
         // Сердца
         this.hearts = [];
+        // Дьяволы
+        this.devils = [];
+        this.lastDevilSpawnSec = -1;
+        // Слуги дьявола
+        this.minions = [];
         
         // Скорости объектов
         this.enemySpeedPxSec = 100; // px/сек
@@ -882,6 +1146,13 @@ class Game {
         this.bees.forEach(b => b.destroy());
         this.bees = [];
         this.rapidFireUntilMs = 0;
+        // очистка дьяволов
+        this.devils.forEach(d => d.destroy());
+        this.devils = [];
+        this.lastDevilSpawnSec = -1;
+        // очистка слуг
+        this.minions.forEach(m => m.destroy());
+        this.minions = [];
         this.loop();
 
         // создать/сбросить игрока по центру дорожек (индекс 3 из 0..6)
@@ -1024,6 +1295,19 @@ class Game {
             this.bosses.push(boss);
         }
 
+        // Спавн дьявола с вероятностью 1/35 в случайное время, не чаще чем раз в 40 секунд
+        const timeSinceLastDevil = secondsNow - this.lastDevilSpawnSec;
+        if (secondsNow > 0 && (this.lastDevilSpawnSec === -1 || timeSinceLastDevil >= 40)) {
+            if (Math.random() < 1/35) {
+                this.lastDevilSpawnSec = secondsNow;
+                const trackIndex = Math.floor(Math.random() * 7);
+                // здоровье дьявола: 1.0 (умирает с одной пули)
+                const devilHp = 1.0;
+                const devil = new Devil(this, trackIndex, this.enemySpeedPxSec, devilHp);
+                this.devils.push(devil);
+            }
+        }
+
         // Спавн в рамках текущей волны
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
@@ -1122,6 +1406,24 @@ class Game {
         if (idx !== -1) this.hearts.splice(idx, 1);
     }
 
+    removeDevil(devil) {
+        const idx = this.devils.indexOf(devil);
+        if (idx !== -1) this.devils.splice(idx, 1);
+    }
+
+    removeMinion(minion) {
+        const idx = this.minions.indexOf(minion);
+        if (idx !== -1) this.minions.splice(idx, 1);
+    }
+
+    getMinionHealth() {
+        return Number((this.baseHealth * 0.7).toFixed(1)); // 30% меньше
+    }
+
+    getMinionLoot() {
+        return this.getCurrentLoot(); // тот же лут
+    }
+
     gameOver() {
         if (!this.isRunning) return;
         this.isRunning = false;
@@ -1136,6 +1438,8 @@ class Game {
         this.bees = [];
         this.bosses.forEach(b => b.destroy());
         this.bosses = [];
+        if (this.devils) { this.devils.forEach(d => d.destroy()); this.devils = []; }
+        if (this.minions) { this.minions.forEach(m => m.destroy()); this.minions = []; }
         this.bullets.forEach(b => b.destroy());
         this.bullets = [];
         if (this.hearts) { this.hearts.forEach(h => h.destroy()); this.hearts = []; }
@@ -1186,6 +1490,10 @@ class Game {
         // Очистка бочек
         this.barrels.forEach(b => b.destroy());
         this.barrels = [];
+        // Очистка дьяволов и слуг
+        if (this.devils) { this.devils.forEach(d => d.destroy()); this.devils = []; }
+        if (this.minions) { this.minions.forEach(m => m.destroy()); this.minions = []; }
+        this.lastDevilSpawnSec = -1;
         
         // Перезапуск игры
         this.start();
@@ -1276,10 +1584,19 @@ class Game {
         return Math.pow(1.2, minutes);
     }
 
-    onEnemyReachedLine(character) {
+    onEnemyReachedLine(enemy) {
         if (!this.isRunning) return;
-        this.removeCharacter(character);
-        character.destroy();
+        // Определяем тип врага и удаляем его из соответствующего массива
+        if (enemy instanceof Character) {
+            this.removeCharacter(enemy);
+        } else if (enemy instanceof Boss) {
+            this.removeBoss(enemy);
+        } else if (enemy instanceof Devil) {
+            this.removeDevil(enemy);
+        } else if (enemy instanceof Minion) {
+            this.removeMinion(enemy);
+        }
+        enemy.destroy();
         this.lives = Math.max(0, this.lives - 1);
         this.updateLivesDisplay();
         if (this.lives <= 0) {
@@ -1339,6 +1656,14 @@ class Game {
         this.showMultiplierAtElement(boss.element, '×2');
     }
 
+    onDevilKilled(devil) {
+        // Удаляем дьявола
+        this.removeDevil(devil);
+        // Награда 12 PXP
+        this.awardPxp(12, devil.element);
+        // Слуги остаются жить и удаляются только при попадании пули (когда их здоровье <= 0)
+    }
+
     onHeartHit(heart) {
         this.removeHeart(heart);
         heart.destroy();
@@ -1356,6 +1681,12 @@ class Game {
         this.removeBee(bee);
         bee.destroy();
     }
+
+    getBaseHealth() {
+        const elapsedMs = this.timer.getElapsedTime();
+        const seconds = Math.floor(elapsedMs / 1000);
+        return 1.0 + seconds * 0.1; // базовая логика здоровья персонажей
+    }
 }
 
 // Инициализация игры
@@ -1367,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Блокируем копирование текста и контекстное меню
     document.addEventListener('copy', function(e) { e.preventDefault(); });
-    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    // Контекстное меню разрешено для просмотра кода
     // Блокируем zoom жестами и сочетаниями клавиш
     window.addEventListener('wheel', function(e) { if (e.ctrlKey) { e.preventDefault(); } }, { passive: false });
     window.addEventListener('keydown', function(e) {
