@@ -1240,6 +1240,12 @@ class Game {
         this.bulletIntervalMs = 1000; // интервал выпуска пуль, мс
         this.speedUpgradeCount = 0; // число апгрейдов скорости
 
+        // Звезда (hai.tgs)
+        this.lastStarSpawnMs = 0; // последний спавн звезды в миллисекундах
+        this.nextStarSpawnDelayMs = this.getRandomStarDelay(); // рандомная задержка для следующей звезды
+        this.starAnimations = [];
+        this.upcomingSpecialSpawns = []; // массив предстоящих спавнов спец-объектов
+
         this.audio = new AudioManager();
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
@@ -1399,6 +1405,8 @@ class Game {
             this.lastCrateCheckSecond = secondsNow;
             if (Math.random() < 1/3) {
                 const trackIndex = Math.floor(Math.random() * 7);
+                // Запланировать звезду за 5 секунд до спавна
+                this.scheduleStarForSpecialSpawn(trackIndex, elapsed + 5000);
                 const crate = new Crate(this, trackIndex, this.enemySpeedPxSec);
                 this.crates.push(crate);
             }
@@ -1409,6 +1417,8 @@ class Game {
             this.lastBeeCheckSecond = secondsNow;
             if (Math.random() < 1/4) {
                 const trackIndex = Math.floor(Math.random() * 7);
+                // Запланировать звезду за 5 секунд до спавна
+                this.scheduleStarForSpecialSpawn(trackIndex, elapsed + 5000);
                 const bee = new Bee(this, trackIndex, this.enemySpeedPxSec);
                 this.bees.push(bee);
             }
@@ -1438,12 +1448,23 @@ class Game {
             }
         }
 
+        // Проверка запланированных звёзд для спец-объектов
+        this.upcomingSpecialSpawns = this.upcomingSpecialSpawns.filter(spawn => {
+            if (elapsed >= spawn.spawnTime) {
+                this.spawnStarAnimationAtTrack(spawn.trackIndex);
+                return false; // удалить из массива
+            }
+            return true; // оставить в массиве
+        });
+
         // Спавн в рамках текущей волны
         while (this.isRunning && this.spawnsLeftInWave > 0 && elapsed >= this.nextSpawnMs) {
             const trackIndex = Math.floor(Math.random() * 7);
             const speed = this.enemySpeedPxSec; // px/sec
             // С шансом 1/30 появляется сердце
             if (Math.random() < 1/30) {
+                // Запланировать звезду за 5 секунд до спавна
+                this.scheduleStarForSpecialSpawn(trackIndex, elapsed + 5000);
                 const heart = new HeartItem(this, trackIndex, speed);
                 this.hearts.push(heart);
             } else {
@@ -1454,6 +1475,8 @@ class Game {
             const prob = baseProb * multiplier; // 1/30, 1/15, 1/10
             const canSpawnBarrel = seconds >= 5 && seconds <= 30 && Math.random() < prob;
             if (canSpawnBarrel) {
+                // Запланировать звезду за 5 секунд до спавна
+                this.scheduleStarForSpecialSpawn(trackIndex, elapsed + 5000);
                 const barrel = new Barrel(this, trackIndex, speed);
                 this.barrels.push(barrel);
             } else {
@@ -1884,6 +1907,114 @@ class Game {
         const elapsedMs = this.timer.getElapsedTime();
         const seconds = Math.floor(elapsedMs / 1000);
         return 1.0 + seconds * 0.1; // базовая логика здоровья персонажей
+    }
+
+    getRandomStarDelay() {
+        // Рандомная задержка от 5 до 15 секунд (5000-15000 мс)
+        return 5000 + Math.random() * 10000;
+    }
+
+    scheduleStarForSpecialSpawn(trackIndex, spawnTime) {
+        // Запланировать звезду за 5 секунд до спавна спец-объекта
+        const starSpawnTime = spawnTime - 5000;
+        this.upcomingSpecialSpawns.push({
+            trackIndex: trackIndex,
+            spawnTime: starSpawnTime
+        });
+    }
+
+    spawnStarAnimationAtTrack(trackIndex) {
+        const container = document.createElement('div');
+        container.className = 'hai-animation';
+        
+        // Позиция на конкретной дорожке
+        const tracks = document.querySelectorAll('.track');
+        if (!tracks[trackIndex]) return;
+        
+        const trackRect = tracks[trackIndex].getBoundingClientRect();
+        const x = trackRect.left + (trackRect.width / 2) - 100; // центр дорожки
+        const y = Math.random() * (window.innerHeight - 200);
+        
+        container.style.left = `${x}px`;
+        container.style.top = `${y}px`;
+        
+        document.body.appendChild(container);
+        
+        // Загрузка анимации
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        
+        tryFetch('hai.tgs').then(anim => {
+            const animation = lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+            
+            // Начать плавное исчезновение через 3 секунды
+            setTimeout(() => {
+                container.style.transition = 'opacity 2s ease-out';
+                container.style.opacity = '0';
+                
+                // Удалить через 2 секунды после начала исчезновения
+                setTimeout(() => {
+                    animation.destroy();
+                    container.remove();
+                }, 2000);
+            }, 3000);
+        }).catch(() => {
+            container.remove();
+        });
+    }
+
+    spawnStarAnimation() {
+        const container = document.createElement('div');
+        container.className = 'hai-animation';
+        
+        // Рандомная позиция на экране
+        const maxX = window.innerWidth - 200;
+        const maxY = window.innerHeight - 200;
+        const x = Math.max(0, Math.random() * maxX);
+        const y = Math.max(0, Math.random() * maxY);
+        
+        container.style.left = `${x}px`;
+        container.style.top = `${y}px`;
+        
+        document.body.appendChild(container);
+        
+        // Загрузка анимации
+        const tryFetch = (path) => fetch(path).then(r => r.arrayBuffer()).then(buf => {
+            const json = pako.inflate(new Uint8Array(buf), { to: 'string' });
+            return JSON.parse(json);
+        });
+        
+        tryFetch('hai.tgs').then(anim => {
+            const animation = lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: anim
+            });
+            
+            // Начать плавное исчезновение через 3 секунды
+            setTimeout(() => {
+                container.style.transition = 'opacity 2s ease-out';
+                container.style.opacity = '0';
+                
+                // Удалить через 2 секунды после начала исчезновения
+                setTimeout(() => {
+                    animation.destroy();
+                    container.remove();
+                }, 2000);
+            }, 3000);
+        }).catch(() => {
+            container.remove();
+        });
     }
 }
 

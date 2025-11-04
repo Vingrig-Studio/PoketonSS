@@ -103,6 +103,16 @@ body.bg-green {
     z-index: 10; /* поле выше панели апгрейдов */
 }
 
+/* Звезда (hai.tgs) на фоне */
+.hai-animation {
+    position: fixed;
+    width: 200px;
+    height: 200px;
+    opacity: 0.1;
+    z-index: 15;
+    pointer-events: none; /* не реагирует на клики */
+}
+
 /* Горизонтальная пунктирная линия */
 .horizontal-line {
     position: absolute;
