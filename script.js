@@ -151,6 +151,92 @@ class AudioManager {
         // Индексы дорожек слева направо → ноты
         this.trackToNote = ['Do','Re','Mi','Fa','Sol','La','Si'];
         this.masterGain = null;
+        
+        // Фоновая музыка
+        this.backgroundMusicInterval = null;
+        this.musicGain = null;
+        this.currentBeat = 0;
+        // Космическая мелодия на 1 минуту (частоты в Гц)
+        // Создаём гармоничную последовательность с циклическим повторением
+        this.melody = [
+            // Фраза 1 (0-8 сек): Восходящая тема
+            { freq: 261.63, duration: 0.4 }, // Do
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 261.63, duration: 0.8 }, // Do (длиннее)
+            
+            // Фраза 2 (8-16 сек): Вариация
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 349.23, duration: 0.4 }, // Fa
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 493.88, duration: 0.4 }, // Si
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.8 }, // Re (длиннее)
+            
+            // Фраза 3 (16-24 сек): Высокая тема
+            { freq: 329.63, duration: 0.3 }, // Mi
+            { freq: 392.0, duration: 0.3 },  // Sol
+            { freq: 440.0, duration: 0.3 },  // La
+            { freq: 493.88, duration: 0.3 }, // Si
+            { freq: 523.25, duration: 0.6 }, // Do (октава выше)
+            { freq: 493.88, duration: 0.3 }, // Si
+            { freq: 440.0, duration: 0.3 },  // La
+            { freq: 392.0, duration: 0.6 },  // Sol
+            
+            // Фраза 4 (24-32 сек): Нисходящая
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 349.23, duration: 0.4 }, // Fa
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 261.63, duration: 0.4 }, // Do
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 329.63, duration: 0.8 }, // Mi (длиннее)
+            
+            // Фраза 5 (32-40 сек): Ритмичная
+            { freq: 392.0, duration: 0.3 },  // Sol
+            { freq: 392.0, duration: 0.3 },  // Sol
+            { freq: 440.0, duration: 0.3 },  // La
+            { freq: 329.63, duration: 0.3 }, // Mi
+            { freq: 392.0, duration: 0.3 },  // Sol
+            { freq: 392.0, duration: 0.3 },  // Sol
+            { freq: 440.0, duration: 0.3 },  // La
+            { freq: 329.63, duration: 0.6 }, // Mi
+            
+            // Фраза 6 (40-48 сек): Космическая
+            { freq: 261.63, duration: 0.5 }, // Do
+            { freq: 349.23, duration: 0.5 }, // Fa
+            { freq: 440.0, duration: 0.5 },  // La
+            { freq: 349.23, duration: 0.5 }, // Fa
+            { freq: 293.66, duration: 0.5 }, // Re
+            { freq: 392.0, duration: 0.5 },  // Sol
+            { freq: 329.63, duration: 1.0 }, // Mi (длиннее)
+            
+            // Фраза 7 (48-56 сек): Возвращение
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 392.0, duration: 0.4 },  // Sol
+            { freq: 440.0, duration: 0.4 },  // La
+            { freq: 392.0, duration: 0.8 },  // Sol (длиннее)
+            
+            // Фраза 8 (56-60 сек): Завершение и переход к началу
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 261.63, duration: 0.4 }, // Do
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 329.63, duration: 0.4 }, // Mi
+            { freq: 293.66, duration: 0.4 }, // Re
+            { freq: 261.63, duration: 0.8 }, // Do (завершение, гармонично переходит к началу)
+        ];
     }
 
     ensureContext() {
@@ -160,6 +246,11 @@ class AudioManager {
             this.masterGain = this.context.createGain();
             this.masterGain.gain.value = 0.6;
             this.masterGain.connect(this.context.destination);
+            
+            // Создаём отдельный gain для фоновой музыки
+            this.musicGain = this.context.createGain();
+            this.musicGain.gain.value = 0.15; // тише чем звуковые эффекты
+            this.musicGain.connect(this.context.destination);
         }
         if (this.context.state === 'suspended') {
             this.context.resume();
@@ -177,10 +268,10 @@ class AudioManager {
         const gain = this.context.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now);
-        // ADSR: быстрый аттак/декея для приятного щелчка
+        // ADSR: быстрый аттак/декея для приятного щелчка (в 3 раза тише)
         gain.gain.setValueAtTime(0.0, now);
-        gain.gain.linearRampToValueAtTime(0.9, now + 0.01);
-        gain.gain.linearRampToValueAtTime(0.5, now + 0.08);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.01); // было 0.9, стало 0.3
+        gain.gain.linearRampToValueAtTime(0.17, now + 0.08); // было 0.5, стало 0.17
         gain.gain.linearRampToValueAtTime(0.0, now + durationSec);
         osc.connect(gain);
         gain.connect(this.masterGain);
@@ -196,6 +287,54 @@ class AudioManager {
     playNoteForTrack(trackIndex) {
         const name = this.trackToNote[trackIndex];
         if (name) this.playNoteByName(name);
+    }
+
+    startBackgroundMusic() {
+        this.ensureContext();
+        // Сначала останавливаем любую играющую музыку
+        this.stopBackgroundMusic();
+        
+        this.currentBeat = 0;
+        const playNextNote = () => {
+            const note = this.melody[this.currentBeat];
+            this.playMusicNote(note.freq, note.duration);
+            
+            this.currentBeat = (this.currentBeat + 1) % this.melody.length;
+            
+            // Следующая нота через duration * 1000 мс
+            this.backgroundMusicInterval = setTimeout(playNextNote, note.duration * 1000);
+        };
+        
+        playNextNote();
+    }
+
+    stopBackgroundMusic() {
+        if (this.backgroundMusicInterval) {
+            clearTimeout(this.backgroundMusicInterval);
+            this.backgroundMusicInterval = null;
+        }
+    }
+
+    playMusicNote(freq, durationSec) {
+        if (!this.context || !this.musicGain) return;
+        
+        const now = this.context.currentTime;
+        const osc = this.context.createOscillator();
+        const gain = this.context.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        
+        // Плавная огибающая для космического звучания
+        gain.gain.setValueAtTime(0.0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+        gain.gain.linearRampToValueAtTime(0.2, now + durationSec * 0.5);
+        gain.gain.linearRampToValueAtTime(0.0, now + durationSec);
+        
+        osc.connect(gain);
+        gain.connect(this.musicGain);
+        osc.start(now);
+        osc.stop(now + durationSec + 0.01);
     }
 }
 
@@ -1319,6 +1458,10 @@ class Game {
 
     start() {
         this.isRunning = true;
+        // Запускаем фоновую музыку
+        if (this.audio) {
+            this.audio.startBackgroundMusic();
+        }
         this.waveNumber = 0;
         this.nextWaveStartMs = 1000; // первая волна в 1s
         this.nextSpawnMs = Number.POSITIVE_INFINITY;
@@ -1635,6 +1778,10 @@ class Game {
         console.log('Pausing game, isRunning:', this.isRunning);
         this.isRunning = false;
         this.timer.stop();
+        // Останавливаем фоновую музыку
+        if (this.audio) {
+            this.audio.stopBackgroundMusic();
+        }
         // Остановить все движения
         this.characters.forEach(c => { if (c && c.pause) c.pause(); });
         this.bullets.forEach(b => { if (b && b.pause) b.pause(); });
@@ -1663,6 +1810,10 @@ class Game {
         console.log('Continuing game');
         this.isRunning = true;
         this.timer.start();
+        // Возобновляем фоновую музыку
+        if (this.audio) {
+            this.audio.startBackgroundMusic();
+        }
         // Возобновить все движения
         this.characters.forEach(c => { if (c && c.resume) c.resume(); });
         this.bullets.forEach(b => { if (b && b.resume) b.resume(); });
@@ -1686,6 +1837,10 @@ class Game {
         if (!this.isRunning) return;
         this.isRunning = false;
         this.timer.stop();
+        // Останавливаем фоновую музыку
+        if (this.audio) {
+            this.audio.stopBackgroundMusic();
+        }
         this.characters.forEach(char => char.destroy());
         this.characters = [];
         this.barrels.forEach(b => b.destroy());
@@ -1709,6 +1864,10 @@ class Game {
 
     restart() {
         console.log('Restarting game');
+        // Останавливаем старую музыку перед перезапуском
+        if (this.audio) {
+            this.audio.stopBackgroundMusic();
+        }
         // Скрыть все оверлеи
         if (this.overlay) this.overlay.style.display = 'none';
         const pauseOverlay = document.getElementById('pause-overlay');
