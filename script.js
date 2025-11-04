@@ -170,11 +170,12 @@ class Character {
         this.element.style.top = `${this.top}px`;
         this.isActive = true;
         this.health = typeof health === 'number' ? health : 1;
+        this.lastTime = Date.now();
         this.loadAnimation();
-        
+
         const tracks = document.querySelectorAll('.track');
         tracks[this.trackIndex].appendChild(this.element);
-        
+
         // подпись здоровья
         this.renderHp();
 
@@ -228,14 +229,17 @@ class Character {
 
     move() {
         if (!this.isActive) return;
-        this.top += this.speed / 60; // Примерно 60 px за кадр/секунду
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
-        
+
         // Проверка достижения пунктира
         const horizontalLine = document.querySelector('.horizontal-line');
         const linePosition = horizontalLine.getBoundingClientRect().top;
         const charBottom = this.element.getBoundingClientRect().bottom;
-        
+
         if (charBottom >= linePosition) {
             this.isActive = false;
             this.game.onEnemyReachedLine(this);
@@ -243,6 +247,19 @@ class Character {
         }
 
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+    }
+
+    resume() {
+        if (!this.rafId && this.isActive) {
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
     }
 
     destroy() {
@@ -354,6 +371,7 @@ class Bullet {
         this.element.style.opacity = '0';
         this.element.style.transition = 'opacity 0.1s linear';
         this.top = 0; // зададим ниже
+        this.lastTime = Date.now();
 
         // Поместим пулю в нужную дорожку
         const tracks = document.querySelectorAll('.track');
@@ -377,8 +395,11 @@ class Bullet {
     }
 
     move() {
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
         // Движение вверх (уменьшаем top)
-        this.top -= this.speed / 60;
+        this.top -= this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
 
         // Сначала проверка столкновений с бочкой/ящиком на той же дорожке
@@ -554,6 +575,7 @@ class Barrel {
         this.element.className = 'barrel';
         this.top = -100;
         this.element.style.top = `${this.top}px`;
+        this.lastTime = Date.now();
         this.loadAnimation();
 
         const tracks = document.querySelectorAll('.track');
@@ -584,7 +606,10 @@ class Barrel {
     }
 
     move() {
-        this.top += this.speed / 60;
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
 
         const horizontalLine = document.querySelector('.horizontal-line');
@@ -598,6 +623,19 @@ class Barrel {
         }
 
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+    }
+
+    resume() {
+        if (!this.rafId) {
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
     }
 
     destroy() {
@@ -617,6 +655,7 @@ class Crate {
         this.element.className = 'crate';
         this.top = -100;
         this.element.style.top = `${this.top}px`;
+        this.lastTime = Date.now();
         this.loadAnimation();
 
         const tracks = document.querySelectorAll('.track');
@@ -646,7 +685,10 @@ class Crate {
     }
 
     move() {
-        this.top += this.speed / 60;
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
 
         const horizontalLine = document.querySelector('.horizontal-line');
@@ -660,6 +702,22 @@ class Crate {
         }
 
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.animation) this.animation.pause();
+    }
+
+    resume() {
+        if (!this.rafId) {
+            this.lastTime = Date.now();
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
+        if (this.animation) this.animation.play();
     }
 
     destroy() {
@@ -679,6 +737,7 @@ class Bee {
         this.element.className = 'bee';
         this.top = -100;
         this.element.style.top = `${this.top}px`;
+        this.lastTime = Date.now();
         this.loadAnimation();
 
         const tracks = document.querySelectorAll('.track');
@@ -708,7 +767,10 @@ class Bee {
     }
 
     move() {
-        this.top += this.speed / 60;
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
 
         const horizontalLine = document.querySelector('.horizontal-line');
@@ -721,6 +783,22 @@ class Bee {
         }
 
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.animation) this.animation.pause();
+    }
+
+    resume() {
+        if (!this.rafId) {
+            this.lastTime = Date.now();
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
+        if (this.animation) this.animation.play();
     }
 
     destroy() {
@@ -740,6 +818,7 @@ class HeartItem {
         this.element.className = 'heart-item';
         this.top = -90;
         this.element.style.top = `${this.top}px`;
+        this.lastTime = Date.now();
         this.loadAnimation();
 
         const tracks = document.querySelectorAll('.track');
@@ -765,7 +844,10 @@ class HeartItem {
     }
 
     move() {
-        this.top += this.speed / 60;
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
         const horizontalLine = document.querySelector('.horizontal-line');
         const linePosition = horizontalLine.getBoundingClientRect().top;
@@ -776,6 +858,22 @@ class HeartItem {
             return;
         }
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.animation) this.animation.pause();
+    }
+
+    resume() {
+        if (!this.rafId) {
+            this.lastTime = Date.now();
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
+        if (this.animation) this.animation.play();
     }
 
     destroy() {
@@ -797,6 +895,7 @@ class Boss {
         this.element.style.top = `${this.top}px`;
         this.health = health;
         this.isActive = true;
+        this.lastTime = Date.now();
         this.loadAnimation();
 
         const tracks = document.querySelectorAll('.track');
@@ -908,6 +1007,7 @@ class Devil {
         this.element.style.top = `${this.top}px`;
         this.health = health;
         this.isActive = true;
+        this.lastTime = Date.now();
         this.loadAnimation();
         this.renderHp();
         this.nextMinionSpawnMs = this.game.timer.getElapsedTime() + 1000; // первый слуга через 1 секунду
@@ -966,19 +1066,27 @@ class Devil {
     spawnMinion() {
         if (!this.isActive) return;
         if (this.spawnedMinions >= this.maxMinions) return;
-        
+
         const baseHealth = this.game.getBaseHealth(); // предполагаю метод для получения текущего базового здоровья
         const minionHealth = baseHealth; // базовое, затем в constructor *0.6
         const minionTrack = this.trackIndex;
         const minion = new Minion(this.game, minionTrack, this.game.enemySpeedPxSec, minionHealth);
         this.game.minions.push(minion);
-        
+
+        // Если игра на паузе, сразу паузим нового слугу
+        if (!this.game.isRunning) {
+            minion.pause();
+        }
+
         this.spawnedMinions++;
     }
 
     move() {
         if (!this.isActive) return;
-        this.top += this.speed / 60;
+        const now = Date.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+        this.top += this.speed * deltaTime;
         this.element.style.top = `${Math.round(this.top)}px`;
 
         // Генерация слуг каждые 1 секунду (пока дьявол жив)
@@ -997,6 +1105,22 @@ class Devil {
             return;
         }
         this.rafId = requestAnimationFrame(this.move.bind(this));
+    }
+
+    pause() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        if (this.animation) this.animation.pause();
+    }
+
+    resume() {
+        if (!this.rafId && this.isActive) {
+            this.lastTime = Date.now();
+            this.rafId = requestAnimationFrame(this.move.bind(this));
+        }
+        if (this.animation) this.animation.play();
     }
 
     destroy() {
@@ -1059,6 +1183,13 @@ class Game {
         this.restartBtn = document.getElementById('restart-btn');
         this.restartBtn.addEventListener('click', this.restart.bind(this));
         this.finalTimeEl = document.getElementById('final-time');
+        this.pauseOverlay = document.getElementById('pause-overlay');
+        this.continueBtn = document.getElementById('continue-btn');
+        this.continueBtn.addEventListener('click', this.continueGame.bind(this));
+        this.restartPauseBtn = document.getElementById('restart-pause-btn');
+        this.restartPauseBtn.addEventListener('click', this.restart.bind(this));
+        this.pauseBtn = document.getElementById('pause-btn');
+        this.pauseBtn.addEventListener('click', this.pauseGame.bind(this));
         this.lives = 3;
         
         this.waveNumber = 0;
@@ -1112,7 +1243,7 @@ class Game {
         this.audio = new AudioManager();
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
-        this.scheduleStart(1);
+        this.scheduleStart(0);
         this.updateLivesDisplay();
     }
 
@@ -1170,7 +1301,6 @@ class Game {
         const field = document.querySelector('.game-field');
         if (!this._fieldClickHandler) {
             this._fieldClickHandler = (e) => {
-                if (!this.isRunning) return;
                 const rect = field.getBoundingClientRect();
                 const midX = rect.left + rect.width / 2;
                 const isLeft = e.clientX < midX;
@@ -1424,6 +1554,58 @@ class Game {
         return this.getCurrentLoot(); // тот же лут
     }
 
+    pauseGame() {
+        if (!this.isRunning) return;
+        console.log('Pausing game, isRunning:', this.isRunning);
+        this.isRunning = false;
+        this.timer.stop();
+        // Остановить все движения
+        this.characters.forEach(c => { if (c && c.pause) c.pause(); });
+        this.bullets.forEach(b => { if (b && b.pause) b.pause(); });
+        this.barrels.forEach(b => { if (b && b.pause) b.pause(); });
+        this.crates.forEach(c => { if (c && c.pause) c.pause(); });
+        this.bees.forEach(b => { if (b && b.pause) b.pause(); });
+        this.bosses.forEach(b => { if (b && b.pause) b.pause(); });
+        this.devils.forEach(d => { if (d && d.pause) d.pause(); });
+        this.minions.forEach(m => { if (m && m.pause) m.pause(); });
+        this.hearts.forEach(h => { if (h && h.pause) h.pause(); });
+        
+        const overlay = document.getElementById('pause-overlay');
+        console.log('Pause overlay element:', overlay);
+        if (overlay) {
+            console.log('Setting overlay display to flex');
+            overlay.style.display = 'flex';
+            overlay.style.zIndex = '9999';
+            console.log('Overlay display after set:', overlay.style.display);
+        } else {
+            console.error('Pause overlay element not found!');
+        }
+    }
+
+    continueGame() {
+        if (this.isRunning) return;
+        console.log('Continuing game');
+        this.isRunning = true;
+        this.timer.start();
+        // Возобновить все движения
+        this.characters.forEach(c => { if (c && c.resume) c.resume(); });
+        this.bullets.forEach(b => { if (b && b.resume) b.resume(); });
+        this.barrels.forEach(b => { if (b && b.resume) b.resume(); });
+        this.crates.forEach(c => { if (c && c.resume) c.resume(); });
+        this.bees.forEach(b => { if (b && b.resume) b.resume(); });
+        this.bosses.forEach(b => { if (b && b.resume) b.resume(); });
+        this.devils.forEach(d => { if (d && d.resume) d.resume(); });
+        this.minions.forEach(m => { if (m && m.resume) m.resume(); });
+        this.hearts.forEach(h => { if (h && h.resume) h.resume(); });
+        
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+        // Перезапустить loop
+        this.loop();
+    }
+
     gameOver() {
         if (!this.isRunning) return;
         this.isRunning = false;
@@ -1450,7 +1632,12 @@ class Game {
     }
 
     restart() {
+        console.log('Restarting game');
+        // Скрыть все оверлеи
         if (this.overlay) this.overlay.style.display = 'none';
+        const pauseOverlay = document.getElementById('pause-overlay');
+        if (pauseOverlay) pauseOverlay.style.display = 'none';
+        
         this.waveNumber = 0;
         this.timer.startTime = Date.now(); // Сброс таймера
         this.balance.amount = 0;
@@ -1487,10 +1674,21 @@ class Game {
         // Сброс частоты выпуска и счётчика апгрейдов скорости
         this.bulletIntervalMs = 1000;
         this.speedUpgradeCount = 0;
-        // Очистка бочек
+        // Очистка всех объектов
+        this.characters.forEach(c => c.destroy());
+        this.characters = [];
         this.barrels.forEach(b => b.destroy());
         this.barrels = [];
-        // Очистка дьяволов и слуг
+        this.crates.forEach(c => c.destroy());
+        this.crates = [];
+        this.bees.forEach(b => b.destroy());
+        this.bees = [];
+        this.bosses.forEach(b => b.destroy());
+        this.bosses = [];
+        this.hearts.forEach(h => h.destroy());
+        this.hearts = [];
+        this.bullets.forEach(b => b.destroy());
+        this.bullets = [];
         if (this.devils) { this.devils.forEach(d => d.destroy()); this.devils = []; }
         if (this.minions) { this.minions.forEach(m => m.destroy()); this.minions = []; }
         this.lastDevilSpawnSec = -1;

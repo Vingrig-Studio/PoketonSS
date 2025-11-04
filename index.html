@@ -15,6 +15,7 @@
             <div class="timer">00:00:00</div>
             <div id="lives-top" class="lives-top">❤ 3</div>
             <div class="balance">0 PXP</div>
+            <button id="pause-btn" class="pause-btn">⏸</button>
         </div>
 
         <!-- Игровое поле с дорожками -->
@@ -69,6 +70,15 @@
                 <div id="final-time" class="popup-time">Время: 00:00:00</div>
                 <button id="restart-btn">Restart</button>
                 <a href="https://t.me/vingrigstudio" target="_blank" rel="noopener noreferrer" class="popup-dev">Dev Vingrig Studio</a>
+            </div>
+        </div>
+
+        <!-- Поп‑ап паузы -->
+        <div id="pause-overlay" class="overlay" style="display:none;">
+            <div class="popup">
+                <div class="popup-title">Paused</div>
+                <button id="continue-btn" class="pause-continue-btn">▶ Continue</button>
+                <button id="restart-pause-btn" class="pause-restart-btn">🔄 Restart</button>
             </div>
         </div>
     </div>
