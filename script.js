@@ -1414,8 +1414,8 @@ class Game {
                     const priceEl = damageBtn.querySelector('.btn-price');
                     if (priceEl) priceEl.textContent = `${newPrice} PXP`;
 
-                    // Увеличиваем урон пули на +0.2
-                    this.bulletDamage = Number((this.bulletDamage + 0.2).toFixed(1));
+                    // Увеличиваем урон пули на +0.3
+                    this.bulletDamage = Number((this.bulletDamage + 0.3).toFixed(1));
                     this.updateDamageInfo();
 
                     this.balance.checkUpgradeButtons();
@@ -1523,12 +1523,10 @@ class Game {
                 const heart = new HeartItem(this, trackIndex, speed);
                 this.hearts.push(heart);
             } else {
-            // В окне 5..30с с шансом 1/30 появляется бочка; шанс усиливается при низких жизнях
+            // Бочка появляется не раньше 37 секунд с вероятностью 1/15
             const seconds = Math.floor(this.timer.getElapsedTime() / 1000);
-            const baseProb = 1 / 30;
-            const multiplier = this.lives <= 1 ? 3 : (this.lives === 2 ? 2 : 1);
-            const prob = baseProb * multiplier; // 1/30, 1/15, 1/10
-            const canSpawnBarrel = seconds >= 5 && seconds <= 30 && Math.random() < prob;
+            const baseProb = 1 / 15;
+            const canSpawnBarrel = seconds >= 37 && Math.random() < baseProb;
             if (canSpawnBarrel) {
                 // Запланировать звезду за 5 секунд до спавна
                 this.scheduleStarForSpecialSpawn(trackIndex, elapsed + 5000);
@@ -1943,6 +1941,30 @@ class Game {
             this.awardPxp(loot, c.element);
             this.removeCharacter(c);
             c.destroy();
+        }
+        
+        // Уничтожаем всех боссов
+        const bossesToRemove = [...this.bosses];
+        for (const boss of bossesToRemove) {
+            this.awardPxp(loot, boss.element);
+            this.removeBoss(boss);
+            boss.destroy();
+        }
+        
+        // Уничтожаем всех дьяволов
+        const devilsToRemove = [...this.devils];
+        for (const devil of devilsToRemove) {
+            this.awardPxp(loot, devil.element);
+            this.removeDevil(devil);
+            devil.destroy();
+        }
+        
+        // Уничтожаем всех слуг
+        const minionsToRemove = [...this.minions];
+        for (const minion of minionsToRemove) {
+            this.awardPxp(loot, minion.element);
+            this.removeMinion(minion);
+            minion.destroy();
         }
     }
 
