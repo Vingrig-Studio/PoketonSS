@@ -1,4 +1,44 @@
+// ============================================
+// Инициализация Telegram Web App
+// ============================================
+// Расширяем приложение на весь экран
+if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+    const tg = Telegram.WebApp;
+    
+    // Расширяем на весь экран
+    tg.expand();
+    
+    // Делаем приложение устойчивым к вертикальным свайпам
+    tg.isVerticalSwipesEnabled = false;
+    
+    // Устанавливаем цвет заголовка
+    tg.setHeaderColor('#000000');
+    
+    // Устанавливаем цвет фона
+    tg.setBackgroundColor('#000000');
+    
+    // Готовность приложения
+    tg.ready();
+    
+    console.log('Telegram Web App initialized');
+    console.log('Platform:', tg.platform);
+    console.log('Viewport height:', tg.viewportHeight);
+}
+
+// Дополнительная фиксация высоты для мобильных устройств
+function fixViewportHeight() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Вызываем при загрузке и изменении размера
+fixViewportHeight();
+window.addEventListener('resize', fixViewportHeight);
+window.addEventListener('orientationchange', fixViewportHeight);
+
+// ============================================
 // Секундомер
+// ============================================
 class Timer {
     constructor() {
         this.startTime = Date.now();
