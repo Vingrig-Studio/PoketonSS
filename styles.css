@@ -3,6 +3,10 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; /* запрет выделения текста для всех элементов */
 }
 
 body {
@@ -11,6 +15,14 @@ body {
     color: white;
     height: 100vh;
     overflow: hidden;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; /* запрет копирования/выделения */
+    -webkit-touch-callout: none; /* iOS запрет контекстного меню */
+    touch-action: manipulation; /* снижение двойного тап-зума */
+}
+
 body.bg-black {
     background-color: #000 !important;
     transition: background-color 0.5s ease;
@@ -19,13 +31,6 @@ body.bg-black {
 body.bg-green {
     background-color: #043004 !important; /* тёмный токсичный зелёный */
     transition: background-color 0.5s ease;
-}
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none; /* запрет копирования/выделения */
-    -webkit-touch-callout: none; /* iOS запрет контекстного меню */
-    touch-action: manipulation; /* снижение двойного тап-зума */
 }
 
 .game-container {
