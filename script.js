@@ -152,91 +152,10 @@ class AudioManager {
         this.trackToNote = ['Do','Re','Mi','Fa','Sol','La','Si'];
         this.masterGain = null;
         
-        // Фоновая музыка
-        this.backgroundMusicInterval = null;
-        this.musicGain = null;
-        this.currentBeat = 0;
-        // Космическая мелодия на 1 минуту (частоты в Гц)
-        // Создаём гармоничную последовательность с циклическим повторением
-        this.melody = [
-            // Фраза 1 (0-8 сек): Восходящая тема
-            { freq: 261.63, duration: 0.4 }, // Do
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 261.63, duration: 0.8 }, // Do (длиннее)
-            
-            // Фраза 2 (8-16 сек): Вариация
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 349.23, duration: 0.4 }, // Fa
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 493.88, duration: 0.4 }, // Si
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.8 }, // Re (длиннее)
-            
-            // Фраза 3 (16-24 сек): Высокая тема
-            { freq: 329.63, duration: 0.3 }, // Mi
-            { freq: 392.0, duration: 0.3 },  // Sol
-            { freq: 440.0, duration: 0.3 },  // La
-            { freq: 493.88, duration: 0.3 }, // Si
-            { freq: 523.25, duration: 0.6 }, // Do (октава выше)
-            { freq: 493.88, duration: 0.3 }, // Si
-            { freq: 440.0, duration: 0.3 },  // La
-            { freq: 392.0, duration: 0.6 },  // Sol
-            
-            // Фраза 4 (24-32 сек): Нисходящая
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 349.23, duration: 0.4 }, // Fa
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 261.63, duration: 0.4 }, // Do
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 329.63, duration: 0.8 }, // Mi (длиннее)
-            
-            // Фраза 5 (32-40 сек): Ритмичная
-            { freq: 392.0, duration: 0.3 },  // Sol
-            { freq: 392.0, duration: 0.3 },  // Sol
-            { freq: 440.0, duration: 0.3 },  // La
-            { freq: 329.63, duration: 0.3 }, // Mi
-            { freq: 392.0, duration: 0.3 },  // Sol
-            { freq: 392.0, duration: 0.3 },  // Sol
-            { freq: 440.0, duration: 0.3 },  // La
-            { freq: 329.63, duration: 0.6 }, // Mi
-            
-            // Фраза 6 (40-48 сек): Космическая
-            { freq: 261.63, duration: 0.5 }, // Do
-            { freq: 349.23, duration: 0.5 }, // Fa
-            { freq: 440.0, duration: 0.5 },  // La
-            { freq: 349.23, duration: 0.5 }, // Fa
-            { freq: 293.66, duration: 0.5 }, // Re
-            { freq: 392.0, duration: 0.5 },  // Sol
-            { freq: 329.63, duration: 1.0 }, // Mi (длиннее)
-            
-            // Фраза 7 (48-56 сек): Возвращение
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 392.0, duration: 0.4 },  // Sol
-            { freq: 440.0, duration: 0.4 },  // La
-            { freq: 392.0, duration: 0.8 },  // Sol (длиннее)
-            
-            // Фраза 8 (56-60 сек): Завершение и переход к началу
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 261.63, duration: 0.4 }, // Do
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 329.63, duration: 0.4 }, // Mi
-            { freq: 293.66, duration: 0.4 }, // Re
-            { freq: 261.63, duration: 0.8 }, // Do (завершение, гармонично переходит к началу)
-        ];
+        // Фоновая музыка из MP3 файла
+        this.backgroundMusic = new Audio('muz.mp3');
+        this.backgroundMusic.loop = true; // Циклическое воспроизведение
+        this.backgroundMusic.volume = 0.3; // Громкость 30%
     }
 
     ensureContext() {
@@ -246,11 +165,6 @@ class AudioManager {
             this.masterGain = this.context.createGain();
             this.masterGain.gain.value = 0.6;
             this.masterGain.connect(this.context.destination);
-            
-            // Создаём отдельный gain для фоновой музыки
-            this.musicGain = this.context.createGain();
-            this.musicGain.gain.value = 0.15; // тише чем звуковые эффекты
-            this.musicGain.connect(this.context.destination);
         }
         if (this.context.state === 'suspended') {
             this.context.resume();
@@ -290,51 +204,40 @@ class AudioManager {
     }
 
     startBackgroundMusic() {
-        this.ensureContext();
-        // Сначала останавливаем любую играющую музыку
-        this.stopBackgroundMusic();
-        
-        this.currentBeat = 0;
-        const playNextNote = () => {
-            const note = this.melody[this.currentBeat];
-            this.playMusicNote(note.freq, note.duration);
-            
-            this.currentBeat = (this.currentBeat + 1) % this.melody.length;
-            
-            // Следующая нота через duration * 1000 мс
-            this.backgroundMusicInterval = setTimeout(playNextNote, note.duration * 1000);
-        };
-        
-        playNextNote();
-    }
-
-    stopBackgroundMusic() {
-        if (this.backgroundMusicInterval) {
-            clearTimeout(this.backgroundMusicInterval);
-            this.backgroundMusicInterval = null;
+        // Запускаем воспроизведение MP3 файла
+        if (this.backgroundMusic) {
+            this.backgroundMusic.play().catch(err => {
+                console.log('Autoplay blocked, music will start on user interaction:', err);
+            });
+            console.log('Background music started');
         }
     }
 
-    playMusicNote(freq, durationSec) {
-        if (!this.context || !this.musicGain) return;
-        
-        const now = this.context.currentTime;
-        const osc = this.context.createOscillator();
-        const gain = this.context.createGain();
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        
-        // Плавная огибающая для космического звучания
-        gain.gain.setValueAtTime(0.0, now);
-        gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
-        gain.gain.linearRampToValueAtTime(0.2, now + durationSec * 0.5);
-        gain.gain.linearRampToValueAtTime(0.0, now + durationSec);
-        
-        osc.connect(gain);
-        gain.connect(this.musicGain);
-        osc.start(now);
-        osc.stop(now + durationSec + 0.01);
+    pauseBackgroundMusic() {
+        // Ставим музыку на паузу (без сброса позиции)
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            console.log('Background music paused');
+        }
+    }
+
+    resumeBackgroundMusic() {
+        // Возобновляем музыку с того же места
+        if (this.backgroundMusic) {
+            this.backgroundMusic.play().catch(err => {
+                console.log('Error resuming music:', err);
+            });
+            console.log('Background music resumed');
+        }
+    }
+
+    stopBackgroundMusic() {
+        // Останавливаем воспроизведение MP3 файла и сбрасываем на начало
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            this.backgroundMusic.currentTime = 0; // Сбрасываем на начало
+            console.log('Background music stopped');
+        }
     }
 }
 
@@ -1443,7 +1346,7 @@ class Game {
         this.audio = new AudioManager();
         this.loop = this.loop.bind(this);
         this.updateSpeedInfo = this.updateSpeedInfo.bind(this);
-        this.scheduleStart(0);
+        // Игра не запускается автоматически, только после нажатия кнопки PLAY
         this.updateLivesDisplay();
     }
 
@@ -1459,6 +1362,7 @@ class Game {
     start() {
         this.isRunning = true;
         // Запускаем фоновую музыку
+        console.log('Game starting, launching background music');
         if (this.audio) {
             this.audio.startBackgroundMusic();
         }
@@ -1778,9 +1682,9 @@ class Game {
         console.log('Pausing game, isRunning:', this.isRunning);
         this.isRunning = false;
         this.timer.stop();
-        // Останавливаем фоновую музыку
+        // Ставим фоновую музыку на паузу (без сброса позиции)
         if (this.audio) {
-            this.audio.stopBackgroundMusic();
+            this.audio.pauseBackgroundMusic();
         }
         // Остановить все движения
         this.characters.forEach(c => { if (c && c.pause) c.pause(); });
@@ -1810,9 +1714,9 @@ class Game {
         console.log('Continuing game');
         this.isRunning = true;
         this.timer.start();
-        // Возобновляем фоновую музыку
+        // Возобновляем фоновую музыку с того же места
         if (this.audio) {
-            this.audio.startBackgroundMusic();
+            this.audio.resumeBackgroundMusic();
         }
         // Возобновить все движения
         this.characters.forEach(c => { if (c && c.resume) c.resume(); });
@@ -2300,6 +2204,25 @@ document.addEventListener('DOMContentLoaded', function() {
     window._game = game;
     window.game = game; // для доступа из Balance.checkUpgradeButtons()
 
+    // Обработчик кнопки PLAY
+    const playBtn = document.getElementById('play-btn');
+    const startOverlay = document.getElementById('start-overlay');
+    
+    if (playBtn && startOverlay) {
+        playBtn.addEventListener('click', function() {
+            // Скрываем поп-ап
+            startOverlay.style.display = 'none';
+            
+            // Разблокируем аудио и запускаем игру
+            if (game && game.audio) {
+                game.audio.unlock();
+            }
+            
+            // Запускаем игру сразу
+            game.scheduleStart(0);
+        });
+    }
+
     // Блокируем копирование текста и контекстное меню
     document.addEventListener('copy', function(e) { e.preventDefault(); });
     // Контекстное меню разрешено для просмотра кода
@@ -2313,9 +2236,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-    // Разблокировать аудиоконтекст при первом взаимодействии
-    const unlockOnce = () => { if (game && game.audio) game.audio.unlock(); window.removeEventListener('pointerdown', unlockOnce); };
-    window.addEventListener('pointerdown', unlockOnce);
 
     // Слушатели на апгрейды обрабатываются внутри Game; здесь ничего не делаем
 
