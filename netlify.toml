@@ -1,19 +1,13 @@
 # Netlify конфигурация для ИГРЫ (не для бота!)
-# Бот нужно деплоить отдельно на Heroku/Railway
+# Бот деплоится отдельно на Heroku/Railway
 
 [build]
-  # Netlify не поддерживает Python боты
-  # Эта конфигурация только для статической игры
   publish = "."
-  command = "echo 'Статическая игра готова'"
+  command = "echo 'Static game ready'"
 
-# Для игры нужны только HTML/JS/CSS файлы
+# Redirect для игры
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Игнорируем Python файлы на Netlify
-[[build.ignore]]
-  command = "[ -f bot.py ] && exit 1 || exit 0"
 
