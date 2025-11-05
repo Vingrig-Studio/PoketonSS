@@ -9,6 +9,33 @@ config.py
 *.pem
 secrets.json
 
+# ===================================
+# TELEGRAM BOT FILES (скрыт, только для локального деплоя)
+# ===================================
+bot.py
+requirements.txt
+Dockerfile
+docker-compose.yml
+.dockerignore
+Procfile
+render.yaml
+railway.json
+runtime.txt
+
+# Документация по боту и деплою
+README_SETUP.md
+README_DEPLOY.md
+DEPLOY_INSTRUCTIONS.md
+MANUAL_DEPLOY.md
+RUSSIAN_DEPLOY.md
+FREE_DEPLOY.md
+deploy_to_server.sh
+auto_deploy.sh
+test_secret.txt
+
+# GitHub Actions для бота
+.github/workflows/deploy.yml
+
 # Python
 __pycache__/
 *.py[cod]
