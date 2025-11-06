@@ -1,4 +1,138 @@
 // ============================================
+// Система локализации (i18n)
+// ============================================
+const translations = {
+    en: {
+        // Поп-апы
+        gameOver: "Game Over",
+        paused: "Paused",
+        restart: "Restart",
+        continue: "Continue",
+        play: "PLAY",
+        time: "Time",
+        
+        // Туториал
+        tutorialLeft: "Tap left side of screen<br>moves poketon left",
+        tutorialRight: "Tap right side of screen<br>moves poketon right",
+        
+        // Игровые элементы
+        rank: "Rank",
+        autoBuy: "Auto Buy",
+        updateSpeed: "Update Speed",
+        updateDamage: "Update Damage",
+        
+        // Другое
+        devStudio: "Dev Vingrig Studio"
+    },
+    ru: {
+        // Поп-апы
+        gameOver: "Игра окончена",
+        paused: "Пауза",
+        restart: "Перезапуск",
+        continue: "Продолжить",
+        play: "ИГРАТЬ",
+        time: "Время",
+        
+        // Туториал
+        tutorialLeft: "Тап по левой части экрана<br>перемещает покетон влево",
+        tutorialRight: "Тап по правой части экрана<br>перемещает покетон вправо",
+        
+        // Игровые элементы
+        rank: "Ранг",
+        autoBuy: "Автопокупка",
+        updateSpeed: "Улучшить скорость",
+        updateDamage: "Улучшить урон",
+        
+        // Другое
+        devStudio: "Разработчик Vingrig Studio"
+    }
+};
+
+// Текущий язык (по умолчанию английский)
+let currentLanguage = localStorage.getItem('gameLanguage') || 'en';
+
+// Функция получения перевода
+function t(key) {
+    return translations[currentLanguage][key] || translations.en[key] || key;
+}
+
+// Функция переключения языка
+function setLanguage(lang) {
+    if (translations[lang]) {
+        currentLanguage = lang;
+        localStorage.setItem('gameLanguage', lang);
+        applyTranslations();
+    }
+}
+
+// Применение переводов ко всем элементам
+function applyTranslations() {
+    // Поп-ап Game Over
+    const gameOverTitle = document.querySelector('#overlay .popup-title');
+    if (gameOverTitle) gameOverTitle.textContent = t('gameOver');
+    
+    const restartBtn = document.getElementById('restart-btn');
+    if (restartBtn) restartBtn.textContent = t('restart');
+    
+    // Поп-ап Paused
+    const pausedTitle = document.querySelector('#pause-overlay .popup-title');
+    if (pausedTitle) pausedTitle.textContent = t('paused');
+    
+    const continueBtn = document.getElementById('continue-btn');
+    if (continueBtn) continueBtn.textContent = `▶ ${t('continue')}`;
+    
+    const restartPauseBtn = document.getElementById('restart-pause-btn');
+    if (restartPauseBtn) restartPauseBtn.textContent = `🔄 ${t('restart')}`;
+    
+    // Поп-ап Start
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) playBtn.textContent = `▶ ${t('play')}`;
+    
+    // Туториал
+    const tutorialLeft = document.querySelector('.tutorial-left .tutorial-text');
+    if (tutorialLeft) tutorialLeft.innerHTML = t('tutorialLeft');
+    
+    const tutorialRight = document.querySelector('.tutorial-right .tutorial-text');
+    if (tutorialRight) tutorialRight.innerHTML = t('tutorialRight');
+    
+    // Игровые элементы
+    const autoBuyLabels = document.querySelectorAll('.auto-buy-label');
+    autoBuyLabels.forEach(el => el.textContent = t('autoBuy'));
+    
+    const speedBtn = document.querySelector('#speed-btn .btn-text');
+    if (speedBtn) speedBtn.textContent = t('updateSpeed');
+    
+    const damageBtn = document.querySelector('#damage-btn .btn-text');
+    if (damageBtn) damageBtn.textContent = t('updateDamage');
+    
+    // Обновление кнопок языка
+    const langButtons = document.querySelectorAll('.lang-btn');
+    langButtons.forEach(btn => {
+        btn.textContent = currentLanguage === 'en' ? '🌐 EN' : '🌐 RU';
+    });
+    
+    // Обновление Rank (будет обновляться в Timer)
+    updateRankDisplay();
+    
+    // Обновление времени в Game Over
+    if (window._game && window._game.finalTimeEl) {
+        const elapsed = window._game.timer ? window._game.timer.getElapsedTime() : 0;
+        const formatted = window._game.timer ? window._game.timer.formatMs(elapsed) : '00:00:00';
+        window._game.finalTimeEl.textContent = `${t('time')}: ${formatted}`;
+    }
+}
+
+// Обновление отображения ранга
+function updateRankDisplay() {
+    const rankElement = document.getElementById('rank-display');
+    if (rankElement && window._game && window._game.timer) {
+        const elapsed = window._game.timer.getElapsedTime();
+        const minutes = Math.floor(elapsed / (1000 * 60));
+        rankElement.textContent = `${t('rank')}: ${minutes}`;
+    }
+}
+
+// ============================================
 // Инициализация Telegram Web App
 // ============================================
 // Расширяем приложение на весь экран
@@ -71,7 +205,7 @@ class Timer {
         const rankElement = document.getElementById('rank-display');
         if (!rankElement) return;
         
-        rankElement.textContent = `Rank: ${minutes}`;
+        rankElement.textContent = `${t('rank')}: ${minutes}`;
         
         // Изменение цвета в зависимости от ранга
         if (minutes >= 30) {
@@ -1803,7 +1937,7 @@ class Game {
         if (this.overlay) this.overlay.style.display = 'flex';
         // гарантируем наличие гиперссылки в поп-апе
         this.ensureDevLink();
-        if (this.finalTimeEl) this.finalTimeEl.textContent = `Время: ${this.timer.formatMs(this.timer.getElapsedTime())}`;
+        if (this.finalTimeEl) this.finalTimeEl.textContent = `${t('time')}: ${this.timer.formatMs(this.timer.getElapsedTime())}`;
     }
 
     restart() {
@@ -2238,6 +2372,31 @@ class Game {
 
 // Инициализация игры
 document.addEventListener('DOMContentLoaded', function() {
+    // Применяем сохраненный язык при загрузке
+    applyTranslations();
+    
+    // Обработчики кнопок переключения языка
+    const langBtnStart = document.getElementById('lang-btn-start');
+    const langBtnPause = document.getElementById('lang-btn-pause');
+    const langBtnOverlay = document.getElementById('lang-btn-overlay');
+    
+    function toggleLanguage() {
+        const newLang = currentLanguage === 'en' ? 'ru' : 'en';
+        setLanguage(newLang);
+    }
+    
+    if (langBtnStart) {
+        langBtnStart.addEventListener('click', toggleLanguage);
+    }
+    
+    if (langBtnPause) {
+        langBtnPause.addEventListener('click', toggleLanguage);
+    }
+    
+    if (langBtnOverlay) {
+        langBtnOverlay.addEventListener('click', toggleLanguage);
+    }
+    
     const timer = new Timer();
     const balance = new Balance();
     const game = new Game(timer, balance);
